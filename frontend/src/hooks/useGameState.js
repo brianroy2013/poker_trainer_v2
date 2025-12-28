@@ -83,15 +83,6 @@ export function useGameState() {
     }
   }, [processComputerActions]);
 
-  const refreshState = useCallback(async () => {
-    try {
-      const state = await gameApi.getState();
-      setGameState(state);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to refresh state');
-    }
-  }, []);
-
   const resetGame = useCallback(async (humanPosition) => {
     abortRef.current = true;
     setLoading(true);
@@ -126,7 +117,6 @@ export function useGameState() {
     processingComputer,
     startNewGame,
     submitAction,
-    refreshState,
     resetGame,
     isHumanTurn
   };

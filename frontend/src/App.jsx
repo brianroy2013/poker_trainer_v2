@@ -13,7 +13,6 @@ function App() {
     processingComputer,
     startNewGame,
     submitAction,
-    resetGame,
     isHumanTurn
   } = useGameState();
 

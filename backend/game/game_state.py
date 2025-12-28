@@ -309,7 +309,8 @@ class GameState:
         if to_call > 0 and effective_pot > 0:
             pot_odds_ratio = effective_pot / to_call
 
-        effective_stack = min(p.stack for p in self.get_active_players())
+        active_players = self.get_active_players()
+        effective_stack = min(p.stack for p in active_players) if active_players else 0
         spr = effective_stack / effective_pot if effective_pot > 0 else 0
 
         call_percent = (to_call / effective_pot * 100) if effective_pot > 0 else 0

@@ -34,7 +34,7 @@ class Card:
     def rank_value(self) -> int:
         return RANK_VALUES[self.rank]
 
-    def to_dict(self) -> str:
+    def to_string(self) -> str:
         return str(self)
 
     @classmethod

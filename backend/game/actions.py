@@ -36,7 +36,7 @@ class ActionValidator:
             min_raise = self.game.current_bet + self.game.min_raise
             max_raise = player.stack + player.current_bet
 
-            if amount < min_raise and amount < max_raise:
+            if amount < min_raise and amount != max_raise:
                 return False, f"Raise must be at least {min_raise}"
             if amount > max_raise:
                 return False, f"Cannot raise more than {max_raise}"
