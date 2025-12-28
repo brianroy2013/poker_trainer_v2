@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PokerTable from './components/Table/PokerTable';
 import ActionPanel from './components/Controls/ActionPanel';
 import StatsPanel from './components/Display/StatsPanel';
-import PositionSelect from './components/GameSetup/PositionSelect';
 import { useGameState } from './hooks/useGameState';
 
 function App() {
@@ -16,15 +15,15 @@ function App() {
     isHumanTurn
   } = useGameState();
 
-  const [showPositionSelect, setShowPositionSelect] = useState(true);
+  const [selectedPosition, setSelectedPosition] = useState('BTN'); // IP by default
 
-  const handlePositionSelect = async (position) => {
-    await startNewGame(position);
-    setShowPositionSelect(false);
-  };
+  // Auto-start game on page load
+  useEffect(() => {
+    startNewGame(selectedPosition);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNewHand = () => {
-    setShowPositionSelect(true);
+    startNewGame(selectedPosition);
   };
 
   const handleAction = async (action, amount) => {
@@ -54,14 +53,42 @@ function App() {
             </p>
           </div>
 
-          {gameState && (
+          <div className="flex items-center gap-4">
+            {/* Position selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400 text-sm">Position:</span>
+              <div className="flex rounded-lg overflow-hidden border border-gray-600">
+                <button
+                  onClick={() => setSelectedPosition('BTN')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    selectedPosition === 'BTN'
+                      ? 'bg-cyan-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  IP
+                </button>
+                <button
+                  onClick={() => setSelectedPosition('BB')}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                    selectedPosition === 'BB'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  OOP
+                </button>
+              </div>
+            </div>
+
             <button
               onClick={handleNewHand}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+              disabled={loading}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
             >
               New Hand
             </button>
-          )}
+          </div>
         </div>
       </header>
 
@@ -138,7 +165,8 @@ function App() {
             <div className="text-center mt-8">
               <button
                 onClick={handleNewHand}
-                className="px-8 py-4 bg-gradient-to-b from-green-500 to-green-700 text-white text-xl font-bold rounded-xl hover:from-green-400 hover:to-green-600 transition-all hover:scale-105 active:scale-100"
+                disabled={loading}
+                className="px-8 py-4 bg-gradient-to-b from-green-500 to-green-700 text-white text-xl font-bold rounded-xl hover:from-green-400 hover:to-green-600 transition-all hover:scale-105 active:scale-100 disabled:opacity-50"
               >
                 Deal New Hand
               </button>
@@ -146,14 +174,6 @@ function App() {
           )}
         </div>
       </main>
-
-      {/* Position select modal */}
-      {showPositionSelect && (
-        <PositionSelect
-          onSelect={handlePositionSelect}
-          disabled={loading}
-        />
-      )}
 
       {/* Footer */}
       <footer className="bg-gray-900/80 border-t border-gray-800 py-3 px-6">
