@@ -25,9 +25,9 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
           </div>
         )}
         <div className={`player-info${hasFolded ? ' folded' : ''}${isActive ? ' active' : ''}`}>
+          <span className="player-position">{position}</span>
           <span className="player-name">Villain</span>
           <span className="player-stack">$1000</span>
-          <span className="player-position">{position}</span>
         </div>
       </div>
     );
@@ -117,15 +117,17 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
 
       {/* Player info */}
       <div className={infoClasses}>
+        <span className="player-position">{player.position}</span>
         <span className={`player-name${!isHero ? ' clickable' : ''}`} title={!isHero ? 'Click to download range log' : ''}>
           {player.label || player.name || (isHero ? 'Hero' : 'Villain')}
         </span>
         <span className="player-stack">${player.stack}</span>
-        <span className="player-position">{player.position}</span>
-        {player.current_bet > 0 && (
-          <span className="player-bet-inline">${player.current_bet}</span>
-        )}
       </div>
+
+      {/* Player bet - outside player info */}
+      {player.current_bet > 0 && (
+        <div className="player-bet">${player.current_bet}</div>
+      )}
 
       {/* Action history */}
       {playerActions && Object.keys(playerActions).length > 0 && (

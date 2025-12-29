@@ -69,21 +69,6 @@ function App() {
         <h1>Poker Hand Reading Trainer</h1>
         <p>
           Hand #{handNumber} | {getStatusText()}
-          <button
-            onClick={handleNewGame}
-            style={{
-              marginLeft: 15,
-              padding: '4px 12px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.3)',
-              borderRadius: 4,
-              color: 'var(--text-light)',
-              cursor: 'pointer',
-              fontSize: '0.8rem'
-            }}
-          >
-            New Game
-          </button>
         </p>
       </div>
 
@@ -123,6 +108,7 @@ function App() {
               currentBet={gameState?.current_bet || 0}
               playerBet={gameState?.players[gameState?.action_on]?.current_bet || 0}
               pot={gameState?.pot || 0}
+              street={gameState?.street || 'preflop'}
               onAction={handleAction}
               disabled={loading}
             />

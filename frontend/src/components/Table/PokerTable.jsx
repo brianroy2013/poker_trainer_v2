@@ -57,7 +57,7 @@ export default function PokerTable({ gameState, onHeroCanAct }) {
 
     // If it's villain's turn, they call/check - move to next
     // If it's a non-active player, they fold after delay
-    const delay = isVillain ? 1000 : 1000;
+    const delay = isVillain ? 500 : 500;
 
     const timer = setTimeout(() => {
       if (!isVillain) {

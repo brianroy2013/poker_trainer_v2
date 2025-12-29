@@ -7,6 +7,7 @@ export function ActionPanel({
   currentBet = 0,
   playerBet = 0,
   pot = 0,
+  street = 'preflop',
   onAction,
   disabled = false
 }) {
@@ -42,6 +43,30 @@ export function ActionPanel({
     );
   }
 
+  // Preflop: only Fold or Raise to 20
+  if (street === 'preflop') {
+    return (
+      <div className="action-buttons">
+        <button
+          className="action-btn fold"
+          onClick={() => handleAction('fold')}
+          disabled={disabled}
+        >
+          Fold
+        </button>
+
+        <button
+          className="action-btn raise"
+          onClick={() => handleAction('raise', 20)}
+          disabled={disabled}
+        >
+          Raise to 20
+        </button>
+      </div>
+    );
+  }
+
+  // Other streets: normal options
   return (
     <div className="action-buttons">
       {canFold && (

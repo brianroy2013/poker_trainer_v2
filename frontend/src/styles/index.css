@@ -237,11 +237,12 @@ body {
 }
 
 .player-position {
-  background: rgba(255, 255, 255, 0.15);
-  padding: 2px 6px;
+  background: var(--chip-blue);
+  padding: 3px 8px;
   border-radius: 8px;
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
 }
 
 .player-bet-inline {
@@ -253,6 +254,53 @@ body {
   font-weight: 700;
   white-space: nowrap;
   margin-left: 4px;
+}
+
+/* Player bet chip - positioned between player and board */
+.player-bet {
+  position: absolute;
+  background: var(--chip-red);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  z-index: 15;
+}
+
+/* Position bets towards the center for each seat */
+.seat-0 .player-bet {
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.seat-1 .player-bet {
+  top: -30px;
+  right: -20px;
+}
+
+.seat-2 .player-bet {
+  bottom: -30px;
+  right: -20px;
+}
+
+.seat-3 .player-bet {
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.seat-4 .player-bet {
+  bottom: -30px;
+  left: -20px;
+}
+
+.seat-5 .player-bet {
+  top: -30px;
+  left: -20px;
 }
 
 /* Dealer Button */
