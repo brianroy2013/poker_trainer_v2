@@ -9,10 +9,11 @@ const getActionSymbol = (action) => {
     case 'fold': return 'F';
     case 'check': return 'X';
     case 'call': {
-      // Show call amount in BB with 1 decimal precision
+      // Show call amount in BB (1 decimal only if needed)
       if (action.call_amount && action.call_amount > 0) {
-        const bbAmount = (action.call_amount / BIG_BLIND).toFixed(1);
-        return `C ${bbAmount}BB`;
+        const bbAmount = action.call_amount / BIG_BLIND;
+        const display = bbAmount % 1 === 0 ? bbAmount.toFixed(0) : bbAmount.toFixed(1);
+        return `C ${display}BB`;
       }
       return 'C';
     }
