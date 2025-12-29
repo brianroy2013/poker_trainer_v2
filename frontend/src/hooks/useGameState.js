@@ -48,6 +48,7 @@ export function useGameState() {
     setError(null);
     try {
       const state = await gameApi.newGame(heroPosition, villainPosition);
+      console.log('Selected PIO file:', state.pio_file);
       setGameState(state);
       setLoading(false);
 

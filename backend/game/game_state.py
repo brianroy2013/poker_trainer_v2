@@ -1,9 +1,64 @@
 import uuid
-from typing import Dict, List, Optional, Any
-from .deck import Deck, Card
+import os
+import random
+from typing import Dict, List, Optional, Any, Tuple
+from .deck import Deck, Card, RANKS, SUITS
 from .actions import ActionValidator
+from .pio_solver import extract_oop_hands_to_file, extract_ip_hands_to_file
 
 POSITIONS = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
+
+
+def load_oop_hands_from_file(file_path: str) -> List[Tuple[str, float]]:
+    """Load OOP hands and frequencies from the extracted file."""
+    hands = []
+    try:
+        with open(file_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('#') or not line:
+                    continue
+                parts = line.split(',')
+                if len(parts) == 2:
+                    hand = parts[0]
+                    freq = float(parts[1])
+                    hands.append((hand, freq))
+    except Exception as e:
+        print(f"[GameState] Error loading OOP hands: {e}", flush=True)
+    return hands
+
+
+def select_oop_hand(hands: List[Tuple[str, float]], available_cards: set) -> Optional[Tuple[str, float]]:
+    """
+    Select a hand from OOP range where both cards are available.
+    Uses weighted random selection based on frequency.
+    """
+    # Filter hands where both cards are available
+    valid_hands = []
+    for hand, freq in hands:
+        # Hand format is like "As9h" - first card is chars 0-1, second is chars 2-3
+        card1 = hand[:2]
+        card2 = hand[2:]
+        if card1 in available_cards and card2 in available_cards:
+            valid_hands.append((hand, freq))
+
+    if not valid_hands:
+        print("[GameState] No valid OOP hands found!", flush=True)
+        return None
+
+    # Weighted random selection
+    total_weight = sum(freq for _, freq in valid_hands)
+    r = random.random() * total_weight
+    cumulative = 0
+    for hand, freq in valid_hands:
+        cumulative += freq
+        if r <= cumulative:
+            return (hand, freq)
+
+    # Fallback to last hand
+    return valid_hands[-1]
+
+
 PREFLOP_ORDER = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
 POSTFLOP_ORDER = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN']
 STREETS = ['preflop', 'flop', 'turn', 'river', 'showdown']
@@ -75,6 +130,9 @@ class GameState:
         self.winner: Optional[str] = None
         self.human_position: str = ''
         self.action_history: List[Dict[str, Any]] = []
+        self.pio_file: str = ''
+        self.flop_cards: List[Card] = []
+        self.available_cards: set = set()  # Tracks all available cards (52 - used cards)
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -95,6 +153,64 @@ class GameState:
         self.human_position = hero_position
         self.villain_position = villain_position
         self.action_history = []
+
+        # Initialize available cards with all 52 cards
+        self.available_cards = {f"{r}{s}" for r in RANKS for s in SUITS}
+
+        # Use fixed test file for initial testing
+        self.pio_file = r'W:\piosolves_for_hand_reading\10_flops\Qs8h7d.cfr'
+        self.flop_cards = [
+            Card.from_string('Qs'),
+            Card.from_string('8h'),
+            Card.from_string('7d')
+        ]
+        self.deck.remove_cards(self.flop_cards)
+
+        # Remove flop cards from available cards
+        for card in self.flop_cards:
+            self.available_cards.discard(str(card))
+
+        # Extract OOP and IP hands from the selected PioSolver file
+        oop_hand_path = os.path.join(os.path.dirname(__file__), '..', '..', 'oop_hand.txt')
+        ip_hand_path = os.path.join(os.path.dirname(__file__), '..', '..', 'ip_hand.txt')
+        if self.pio_file:
+            extract_oop_hands_to_file(self.pio_file, oop_hand_path)
+            extract_ip_hands_to_file(self.pio_file, ip_hand_path)
+
+        # Log available cards after PioSolver processing
+        print(f"[GameState] PioSolver file loaded: {self.pio_file}", flush=True)
+        print(f"[GameState] Flop cards: {[str(c) for c in self.flop_cards]}", flush=True)
+        print(f"[GameState] Available cards ({len(self.available_cards)}): {sorted(self.available_cards)}", flush=True)
+
+        # Select OOP hand (BB) from PioSolver range
+        oop_hands = load_oop_hands_from_file(oop_hand_path)
+        selected_oop = select_oop_hand(oop_hands, self.available_cards)
+        if selected_oop:
+            selected_hand, selected_freq = selected_oop
+            print(f"[GameState] Selected OOP hand: {selected_hand} (frequency: {selected_freq:.6f})", flush=True)
+            bb_cards = [Card.from_string(selected_hand[:2]), Card.from_string(selected_hand[2:])]
+        else:
+            print("[GameState] Falling back to hardcoded BB hand: As9h", flush=True)
+            bb_cards = [Card.from_string('As'), Card.from_string('9h')]
+
+        # Remove BB cards from available_cards
+        for card in bb_cards:
+            self.available_cards.discard(str(card))
+
+        # Select IP hand (BTN) from PioSolver range
+        ip_hands = load_oop_hands_from_file(ip_hand_path)  # Same file format
+        selected_ip = select_oop_hand(ip_hands, self.available_cards)
+        if selected_ip:
+            selected_hand, selected_freq = selected_ip
+            print(f"[GameState] Selected IP hand: {selected_hand} (frequency: {selected_freq:.6f})", flush=True)
+            btn_cards = [Card.from_string(selected_hand[:2]), Card.from_string(selected_hand[2:])]
+        else:
+            print("[GameState] Falling back to hardcoded BTN hand: 7s8s", flush=True)
+            btn_cards = [Card.from_string('7s'), Card.from_string('8s')]
+
+        # Remove BTN cards from available_cards
+        for card in btn_cards:
+            self.available_cards.discard(str(card))
 
         # Create all 6 players - only hero and villain are "active" (won't auto-fold)
         self.players = {}
@@ -121,9 +237,18 @@ class GameState:
         self.players['BB'].stack -= BIG_BLIND
         self.players['BB'].current_bet = BIG_BLIND
 
-        # Deal cards to all players
+        # Remove cards from deck
+        self.deck.remove_cards(bb_cards)
+        self.deck.remove_cards(btn_cards)
+
+        # Deal cards to players
         for pos in POSITIONS:
-            self.players[pos].hole_cards = self.deck.deal(2)
+            if pos == 'BB':
+                self.players[pos].hole_cards = bb_cards
+            elif pos == 'BTN':
+                self.players[pos].hole_cards = btn_cards
+            else:
+                self.players[pos].hole_cards = self.deck.deal(2)
 
         # Preflop action starts at UTG
         self.action_on = 'UTG'
@@ -182,7 +307,11 @@ class GameState:
             self.street = STREETS[current_idx + 1]
 
         if self.street == 'flop':
-            self.community_cards = self.deck.deal(3)
+            # Use predetermined flop cards from PioSolver file if available
+            if self.flop_cards:
+                self.community_cards = self.flop_cards
+            else:
+                self.community_cards = self.deck.deal(3)
         elif self.street == 'turn':
             self.community_cards.extend(self.deck.deal(1))
         elif self.street == 'river':
@@ -345,7 +474,8 @@ class GameState:
         human_pos = self.human_position
         players_dict = {}
         for pos, p in self.players.items():
-            hide = not p.is_human and self.street != 'showdown' and not self.hand_complete
+            # For testing: always show villain cards
+            hide = False  # was: not p.is_human and self.street != 'showdown' and not self.hand_complete
             players_dict[pos] = p.to_dict(hide_cards=hide)
 
         return {
@@ -365,5 +495,6 @@ class GameState:
             'stats': self.get_stats(),
             'hand_complete': self.hand_complete,
             'winner': self.winner,
-            'action_history': self.action_history
+            'action_history': self.action_history,
+            'pio_file': self.pio_file
         }
