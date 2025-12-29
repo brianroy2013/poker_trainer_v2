@@ -87,7 +87,7 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
       {/* Player info */}
       <div className={infoClasses}>
         <span className={`player-name${!isHero ? ' clickable' : ''}`} title={!isHero ? 'Click to download range log' : ''}>
-          {player.name || (isHero ? 'Hero' : `AI${seatIndex}`)}
+          {player.label || player.name || (isHero ? 'Hero' : 'Villain')}
         </span>
         <span className="player-stack">${player.stack}</span>
         <span className="player-position">{player.position}</span>

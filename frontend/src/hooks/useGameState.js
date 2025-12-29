@@ -42,12 +42,12 @@ export function useGameState() {
     setProcessingComputer(false);
   }, []);
 
-  const startNewGame = useCallback(async (humanPosition = 'BTN') => {
+  const startNewGame = useCallback(async (heroPosition = 'BTN', villainPosition = 'BB') => {
     abortRef.current = true; // Stop any pending computer actions
     setLoading(true);
     setError(null);
     try {
-      const state = await gameApi.newGame(humanPosition);
+      const state = await gameApi.newGame(heroPosition, villainPosition);
       setGameState(state);
       setLoading(false);
 
@@ -83,12 +83,12 @@ export function useGameState() {
     }
   }, [processComputerActions]);
 
-  const resetGame = useCallback(async (humanPosition) => {
+  const resetGame = useCallback(async (heroPosition, villainPosition) => {
     abortRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const state = await gameApi.resetGame(humanPosition);
+      const state = await gameApi.resetGame(heroPosition, villainPosition);
       setGameState(state);
       setLoading(false);
 

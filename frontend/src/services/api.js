@@ -8,8 +8,11 @@ const api = axios.create({
 });
 
 export const gameApi = {
-  newGame: async (humanPosition = 'BTN') => {
-    const response = await api.post('/new', { human_position: humanPosition });
+  newGame: async (heroPosition = 'BTN', villainPosition = 'BB') => {
+    const response = await api.post('/new', {
+      hero_position: heroPosition,
+      villain_position: villainPosition
+    });
     return response.data;
   },
 
@@ -28,8 +31,11 @@ export const gameApi = {
     return response.data;
   },
 
-  resetGame: async (humanPosition) => {
-    const response = await api.post('/reset', { human_position: humanPosition });
+  resetGame: async (heroPosition, villainPosition) => {
+    const response = await api.post('/reset', {
+      hero_position: heroPosition,
+      villain_position: villainPosition
+    });
     return response.data;
   }
 };

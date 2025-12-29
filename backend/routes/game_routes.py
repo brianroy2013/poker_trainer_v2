@@ -11,12 +11,18 @@ computer_player = ComputerPlayer()
 @game_bp.route('/new', methods=['POST'])
 def new_game():
     data = request.get_json() or {}
-    human_position = data.get('human_position', 'BTN')
+    hero_position = data.get('hero_position', data.get('human_position', 'BTN'))
+    villain_position = data.get('villain_position', 'BB')
 
-    if human_position not in ['BTN', 'BB']:
-        return jsonify({'error': 'Invalid position. Must be BTN or BB'}), 400
+    valid_positions = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
+    if hero_position not in valid_positions:
+        return jsonify({'error': f'Invalid hero position. Must be one of {valid_positions}'}), 400
+    if villain_position not in valid_positions:
+        return jsonify({'error': f'Invalid villain position. Must be one of {valid_positions}'}), 400
+    if hero_position == villain_position:
+        return jsonify({'error': 'Hero and villain must be in different positions'}), 400
 
-    game_state.start_new_hand(human_position)
+    game_state.start_new_hand(hero_position, villain_position)
 
     # Don't auto-process computer actions - let frontend animate them
     return jsonify(game_state.to_dict())
@@ -88,9 +94,10 @@ def submit_action():
 @game_bp.route('/reset', methods=['POST'])
 def reset_game():
     data = request.get_json() or {}
-    human_position = data.get('human_position', game_state.human_position or 'BTN')
+    hero_position = data.get('hero_position', data.get('human_position', game_state.human_position or 'BTN'))
+    villain_position = data.get('villain_position', getattr(game_state, 'villain_position', 'BB'))
 
-    game_state.start_new_hand(human_position)
+    game_state.start_new_hand(hero_position, villain_position)
 
     # Don't auto-process computer actions - let frontend animate them
     return jsonify(game_state.to_dict())

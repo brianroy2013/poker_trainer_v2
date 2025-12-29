@@ -80,7 +80,7 @@ class GameState:
             for pos in POSITIONS
         }
 
-    def start_new_hand(self, human_position: str = 'BTN'):
+    def start_new_hand(self, hero_position: str = 'BTN', villain_position: str = 'BB'):
         self.hand_id = str(uuid.uuid4())
         self.deck.reset()
         self.street = 'preflop'
@@ -91,22 +91,20 @@ class GameState:
         self.hand_complete = False
         self.winner = None
         self.last_aggressor = 'BB'
-        self.human_position = human_position
+        self.human_position = hero_position
+        self.villain_position = villain_position
 
-        # Create all 6 players - only BTN and BB are "active" (won't auto-fold)
+        # Create all 6 players - only hero and villain are "active" (won't auto-fold)
         self.players = {}
         for pos in POSITIONS:
-            if pos == 'BTN':
-                is_human = (human_position == 'BTN')
-                is_active = True
-                label = 'IP'
-            elif pos == 'BB':
-                is_human = (human_position == 'BB')
-                is_active = True
-                label = 'OOP'
+            is_human = (pos == hero_position)
+            is_active = (pos == hero_position or pos == villain_position)
+
+            if pos == hero_position:
+                label = 'Hero'
+            elif pos == villain_position:
+                label = 'Villain'
             else:
-                is_human = False
-                is_active = False  # Will fold when action reaches them
                 label = pos
 
             self.players[pos] = Player(pos, label, is_human=is_human, is_active=is_active)
@@ -342,6 +340,7 @@ class GameState:
             'seats': self.seats,
             'action_on': self.action_on,
             'human_position': self.human_position,
+            'villain_position': getattr(self, 'villain_position', 'BB'),
             'available_actions': validator.get_available_actions() if validator else [],
             'min_raise': self.current_bet + self.min_raise,
             'max_raise': (player.stack + player.current_bet) if player else 0,

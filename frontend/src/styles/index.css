@@ -702,3 +702,118 @@ body {
     padding: 6px;
   }
 }
+
+/* Game Setup */
+.game-setup {
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.game-setup h2 {
+  color: var(--gold);
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.setup-description {
+  color: var(--text-muted);
+  margin-bottom: 30px;
+  font-size: 0.9rem;
+}
+
+.position-selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.position-selector {
+  text-align: left;
+}
+
+.position-selector label {
+  display: block;
+  color: var(--text-light);
+  font-weight: 600;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.position-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.position-btn {
+  padding: 10px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-light);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.position-btn:hover:not(.disabled) {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.position-btn.selected.hero {
+  border-color: var(--chip-blue);
+  background: rgba(25, 118, 210, 0.3);
+  color: #fff;
+}
+
+.position-btn.selected.villain {
+  border-color: var(--chip-red);
+  background: rgba(198, 40, 40, 0.3);
+  color: #fff;
+}
+
+.position-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.setup-summary {
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 25px;
+}
+
+.setup-summary p {
+  color: var(--text-light);
+  margin: 0;
+}
+
+.start-game-btn {
+  padding: 14px 40px;
+  background: var(--chip-green);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-game-btn:hover:not(:disabled) {
+  background: #2e7d32;
+  transform: scale(1.02);
+}
+
+.start-game-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
