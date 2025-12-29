@@ -37,6 +37,23 @@ export default function PokerTable({ gameState, onHeroCanAct, onComputerAction }
     }
   }, [gameState, heroPosition, villainPosition, onHeroCanAct]);
 
+  // Sync foldedPositions with backend action_history (for folds that happen after hero acts)
+  useEffect(() => {
+    if (!gameState?.action_history) return;
+
+    const foldedFromHistory = gameState.action_history
+      .filter(a => a.action === 'fold')
+      .map(a => a.position);
+
+    if (foldedFromHistory.length > 0) {
+      setFoldedPositions(prev => {
+        const newSet = new Set(prev);
+        foldedFromHistory.forEach(pos => newSet.add(pos));
+        return newSet;
+      });
+    }
+  }, [gameState?.action_history]);
+
   // Handle preflop action progression
   useEffect(() => {
     if (!gameState || preflopDone || !visualActionOn) return;
