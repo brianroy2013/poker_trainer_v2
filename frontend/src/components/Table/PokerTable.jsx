@@ -197,24 +197,24 @@ export default function PokerTable({ gameState, onHeroCanAct, onComputerAction }
         />
       ))}
 
-      {/* Winner announcement overlay */}
+      {/* Winner announcement overlay - positioned above the board cards */}
       {gameState.hand_complete && gameState.winner && (
         <div style={{
           position: 'absolute',
-          top: '50%',
+          top: '28%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
           backgroundColor: 'rgba(0,0,0,0.85)',
-          padding: '20px 40px',
-          borderRadius: 16,
+          padding: '10px 24px',
+          borderRadius: 12,
           border: '2px solid var(--gold)',
           zIndex: 50,
           textAlign: 'center'
         }}>
-          <div style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--gold)' }}>
+          <div style={{ fontSize: 18, fontWeight: 'bold', color: 'var(--gold)' }}>
             {gameState.players[gameState.winner]?.label || gameState.winner} Wins!
           </div>
-          <div style={{ color: '#ccc', fontSize: 18, marginTop: 8 }}>
+          <div style={{ color: '#ccc', fontSize: 14, marginTop: 4 }}>
             Pot: ${pot}
           </div>
         </div>
