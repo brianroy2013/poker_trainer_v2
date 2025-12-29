@@ -1,86 +1,134 @@
 import React from 'react';
 import Seat from './Seat';
-import CommunityCards from '../Display/CommunityCards';
-import PotDisplay from '../Display/PotDisplay';
+import Card from '../Cards/Card';
 
-const POSITIONS = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
+// Map position names to seat indices (0-5 for 6-max)
+// Backend uses: UTG, MP, CO, BTN, SB, BB
+const POSITION_TO_SEAT = {
+  'BTN': 0, // Hero position (bottom center)
+  'SB': 1,  // Bottom left
+  'BB': 2,  // Top left
+  'UTG': 3, // Top center
+  'MP': 4,  // Top right
+  'CO': 5   // Bottom right
+};
 
-export function PokerTable({ gameState }) {
+// Position order for rendering (matches seat positions 0-5)
+const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'];
+
+export default function PokerTable({ gameState }) {
   if (!gameState) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-400 text-xl">Start a new hand to begin</div>
+      <div className="poker-table" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: '#fff' }}>Loading...</span>
       </div>
     );
   }
 
-  const { players, seats, action_on, community_cards, pot, street } = gameState;
+  const board = gameState.board || gameState.community_cards || [];
+  const pot = gameState.pot || 0;
+  const street = gameState.street || 'preflop';
+
+  // Get players in correct order
+  const getPlayersArray = () => {
+    if (Array.isArray(gameState.players)) {
+      return gameState.players;
+    }
+    // V2 format - object with position keys
+    return POSITION_ORDER.map(pos => {
+      const player = gameState.players[pos];
+      if (player) {
+        return {
+          ...player,
+          position: pos,
+          cards: player.hole_cards || player.cards
+        };
+      }
+      return null;
+    });
+  };
+
+  const players = getPlayersArray();
+  const actionOn = gameState.action_on;
+
+  // Determine which seat index is active
+  const getActiveSeatIndex = () => {
+    if (typeof actionOn === 'number') return actionOn;
+    return POSITION_TO_SEAT[actionOn] ?? -1;
+  };
+
+  const activeSeatIndex = getActiveSeatIndex();
+
+  // Find dealer position
+  const getDealerSeatIndex = () => {
+    if (gameState.dealer_position !== undefined) {
+      return gameState.dealer_position;
+    }
+    // Find BTN player
+    const btnIndex = players.findIndex(p => p?.position === 'BTN');
+    return btnIndex >= 0 ? btnIndex : 1;
+  };
+
+  const dealerSeatIndex = getDealerSeatIndex();
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto aspect-[16/10]">
-      {/* Table felt */}
-      <div
-        className="absolute inset-0 rounded-[50%] felt-texture shadow-2xl"
-        style={{
-          border: '12px solid #4a3728',
-          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.5)'
-        }}
-      />
-
-      {/* Rail/rim detail */}
-      <div
-        className="absolute inset-0 rounded-[50%] pointer-events-none"
-        style={{
-          border: '12px solid transparent',
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.2) 100%) border-box',
-          WebkitMask: 'linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)',
-          WebkitMaskComposite: 'xor',
-          maskComposite: 'exclude'
-        }}
-      />
-
-      {/* Center area - community cards and pot */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-        {/* Street indicator */}
-        <div className="text-sm font-medium text-gray-300 uppercase tracking-wider">
-          {street}
+    <div className="poker-table">
+      {/* Board area with community cards and pot */}
+      <div className="board-area">
+        <div className="board-cards">
+          {board.length > 0 ? (
+            board.map((card, i) => (
+              <Card key={i} card={card} />
+            ))
+          ) : (
+            // Empty card placeholders
+            [0, 1, 2, 3, 4].map(i => (
+              <div key={i} className="card empty" />
+            ))
+          )}
         </div>
-
-        {/* Community cards */}
-        <CommunityCards cards={community_cards} street={street} />
-
-        {/* Pot display */}
-        <PotDisplay pot={pot} />
+        <div className="pot-display">
+          Pot: <span className="pot-amount">${pot}</span>
+          <span style={{ marginLeft: 12, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+            {street.toUpperCase()}
+          </span>
+        </div>
       </div>
 
       {/* Player seats */}
-      {POSITIONS.map((position) => (
+      {players.map((player, i) => (
         <Seat
-          key={position}
-          position={position}
-          player={players[position]}
-          seatInfo={seats[position]}
-          isActive={seats[position]?.active}
-          isActionOn={action_on === position}
-          showDealer={position === 'BTN'}
+          key={i}
+          player={player}
+          seatIndex={i}
+          isActive={activeSeatIndex === i}
+          isDealer={dealerSeatIndex === i}
+          actionHistory={gameState.action_history}
         />
       ))}
 
-      {/* Winner announcement */}
+      {/* Winner announcement overlay */}
       {gameState.hand_complete && gameState.winner && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/80 backdrop-blur-sm px-8 py-4 rounded-2xl border-2 border-amber-400 shadow-lg shadow-amber-500/30">
-            <div className="text-2xl font-bold text-amber-400">
-              {players[gameState.winner]?.label || gameState.winner} Wins!
-            </div>
-            <div className="text-center text-gray-300 text-sm mt-1">
-              Pot: {pot.toLocaleString()}
-            </div>
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          padding: '20px 40px',
+          borderRadius: 16,
+          border: '2px solid var(--gold)',
+          zIndex: 50,
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--gold)' }}>
+            {gameState.winner} Wins!
+          </div>
+          <div style={{ color: '#ccc', fontSize: 18, marginTop: 8 }}>
+            Pot: ${pot}
           </div>
         </div>
       )}
     </div>
   );
 }
-
-export default PokerTable;

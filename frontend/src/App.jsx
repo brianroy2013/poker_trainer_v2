@@ -15,172 +15,115 @@ function App() {
     isHumanTurn
   } = useGameState();
 
-  const [selectedPosition, setSelectedPosition] = useState('BTN'); // IP by default
+  const [selectedPosition, setSelectedPosition] = useState('BTN');
+  const [handNumber, setHandNumber] = useState(1);
 
-  // Auto-start game on page load
   useEffect(() => {
     startNewGame(selectedPosition);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNewHand = () => {
     startNewGame(selectedPosition);
+    setHandNumber(prev => prev + 1);
   };
 
   const handleAction = async (action, amount) => {
     await submitAction(action, amount);
   };
 
-  const getPlayerStats = () => {
-    if (!gameState || !gameState.action_on) return null;
-    const player = gameState.players[gameState.action_on];
-    return {
-      ...gameState.stats,
-      playerBet: player?.current_bet || 0
-    };
+  const getStatusText = () => {
+    if (gameState?.hand_complete) return 'Hand complete';
+    if (isHumanTurn) return 'Your turn';
+    if (processingComputer) return 'Processing...';
+    return 'Waiting...';
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 py-4 px-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Poker Hand Reading Trainer
-            </h1>
-            <p className="text-sm text-gray-400">
-              Heads-Up No-Limit Texas Hold'em
-            </p>
-          </div>
+    <div className="app">
+      <div className="header">
+        <h1>Poker Hand Reading Trainer</h1>
+        <p>Hand #{handNumber} | {getStatusText()}</p>
+      </div>
 
-          <div className="flex items-center gap-4">
-            {/* Position selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Position:</span>
-              <div className="flex rounded-lg overflow-hidden border border-gray-600">
-                <button
-                  onClick={() => setSelectedPosition('BTN')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    selectedPosition === 'BTN'
-                      ? 'bg-cyan-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  IP
-                </button>
-                <button
-                  onClick={() => setSelectedPosition('BB')}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    selectedPosition === 'BB'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  OOP
-                </button>
-              </div>
-            </div>
-
-            <button
-              onClick={handleNewHand}
-              disabled={loading}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors disabled:opacity-50"
-            >
-              New Hand
-            </button>
-          </div>
+      {error && (
+        <div className="error">
+          {error}
+          <button onClick={() => window.location.reload()}>Dismiss</button>
         </div>
-      </header>
+      )}
 
-      {/* Main content */}
-      <main className="flex-1 py-8 px-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Error display */}
-          {error && (
-            <div className="mb-4 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200">
-              {error}
-            </div>
-          )}
+      <div className="game-container">
+        <div className="main-area">
+          <PokerTable gameState={gameState} />
 
-          {/* Loading overlay - only show for initial load, not computer actions */}
-          {loading && !gameState && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
-              <div className="bg-gray-800 rounded-xl p-6 flex items-center gap-3">
-                <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-white">Starting game...</span>
+          {gameState?.hand_complete ? (
+            <div className="showdown-message">
+              <div className="winner-text">
+                {gameState.winner ? `${gameState.winner} Wins!` : 'Hand Complete'}
               </div>
-            </div>
-          )}
-
-          {/* Poker table */}
-          <div className="mb-8">
-            <PokerTable gameState={gameState} />
-          </div>
-
-          {/* Controls section */}
-          {gameState && !gameState.hand_complete && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {/* Stats panel */}
-              <div className="lg:col-span-1">
-                <StatsPanel
-                  stats={getPlayerStats()}
-                  currentBet={gameState.current_bet}
-                  playerBet={gameState.players[gameState.action_on]?.current_bet || 0}
-                />
-              </div>
-
-              {/* Action panel */}
-              <div className="lg:col-span-2">
-                {isHumanTurn ? (
-                  <ActionPanel
-                    availableActions={gameState.available_actions}
-                    minRaise={gameState.min_raise}
-                    maxRaise={gameState.max_raise}
-                    currentBet={gameState.current_bet}
-                    playerBet={gameState.players[gameState.action_on]?.current_bet || 0}
-                    pot={gameState.pot}
-                    onAction={handleAction}
-                    disabled={loading}
-                  />
-                ) : (
-                  <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-6 border border-gray-700 text-center">
-                    <div className="flex items-center justify-center gap-3 text-gray-400">
-                      {processingComputer && (
-                        <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
-                      )}
-                      <span>
-                        {processingComputer
-                          ? `${gameState.players[gameState.action_on]?.position || 'Opponent'} is acting...`
-                          : 'Waiting for opponent...'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Hand complete - New hand button */}
-          {gameState?.hand_complete && (
-            <div className="text-center mt-8">
-              <button
-                onClick={handleNewHand}
-                disabled={loading}
-                className="px-8 py-4 bg-gradient-to-b from-green-500 to-green-700 text-white text-xl font-bold rounded-xl hover:from-green-400 hover:to-green-600 transition-all hover:scale-105 active:scale-100 disabled:opacity-50"
-              >
+              {gameState.winning_hand && (
+                <div className="hand-rank">{gameState.winning_hand}</div>
+              )}
+              <button className="new-hand-btn" onClick={handleNewHand} disabled={loading} style={{ marginTop: 12 }}>
                 Deal New Hand
               </button>
             </div>
+          ) : isHumanTurn ? (
+            <ActionPanel
+              availableActions={gameState?.available_actions || []}
+              minRaise={gameState?.min_raise || 0}
+              maxRaise={gameState?.max_raise || 0}
+              currentBet={gameState?.current_bet || 0}
+              playerBet={gameState?.players[gameState?.action_on]?.current_bet || 0}
+              pot={gameState?.pot || 0}
+              onAction={handleAction}
+              disabled={loading}
+            />
+          ) : (
+            <div className="waiting">
+              {processingComputer ? 'Processing...' : 'Waiting for opponents...'}
+            </div>
           )}
         </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="bg-gray-900/80 border-t border-gray-800 py-3 px-6">
-        <div className="max-w-6xl mx-auto text-center text-sm text-gray-500">
-          Practice hand reading in heads-up situations
+        <div className="side-panel">
+          <StatsPanel gameState={gameState} />
+
+          <div className="range-grid-container">
+            <h3>AI Range</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              Complete the hand to see AI ranges
+            </p>
+          </div>
+
+          <div className="hand-review">
+            <h3>Hand Review</h3>
+            {gameState?.action_history && gameState.action_history.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {gameState.action_history.slice(-10).map((action, i) => (
+                  <div key={i} className="review-item" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ color: 'var(--chip-blue)', fontWeight: 600 }}>{action.position}</span>
+                    <span style={{
+                      color: action.action === 'fold' ? '#3d7cb8' :
+                             action.action === 'check' ? '#3b82f6' :
+                             action.action === 'call' ? '#5ab966' : '#f03c3c'
+                    }}>
+                      {action.action.toUpperCase()}
+                    </span>
+                    {action.amount > 0 && (
+                      <span style={{ color: 'var(--gold)' }}>${action.amount}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                Complete the hand to review actions
+              </p>
+            )}
+          </div>
         </div>
-      </footer>
+      </div>
     </div>
   );
 }

@@ -1,115 +1,120 @@
 import React from 'react';
-import HoleCards from '../Cards/HoleCards';
+import Card from '../Cards/Card';
 
-const POSITION_STYLES = {
-  'UTG': { top: '5%', left: '25%', transform: 'translate(-50%, 0)' },
-  'MP': { top: '5%', right: '25%', transform: 'translate(50%, 0)' },
-  'CO': { top: '50%', right: '2%', transform: 'translate(0, -50%)' },
-  'BTN': { bottom: '5%', right: '25%', transform: 'translate(50%, 0)' },
-  'SB': { bottom: '5%', left: '25%', transform: 'translate(-50%, 0)' },
-  'BB': { top: '50%', left: '2%', transform: 'translate(0, -50%)' }
-};
+export default function Seat({ player, seatIndex, isActive, isDealer, actionHistory }) {
+  if (!player) return null;
 
-export function Seat({
-  position,
-  player,
-  seatInfo,
-  isActive,
-  isActionOn,
-  showDealer = false
-}) {
-  const style = POSITION_STYLES[position] || {};
-  const isFolded = player?.folded;
-  const hasPlayer = !!player;
+  const isHero = player.is_hero || player.is_human;
+  const hasFolded = player.folded || !player.is_active;
+  const cards = player.cards || player.hole_cards;
+
+  // Get action history for this player
+  const getPlayerActions = () => {
+    if (!actionHistory || actionHistory.length === 0) return null;
+
+    const playerActions = actionHistory.filter(a => a.position === player.position);
+    if (playerActions.length === 0) return null;
+
+    // Group by street
+    const byStreet = {};
+    playerActions.forEach(action => {
+      const street = action.street || 'preflop';
+      const streetKey = street[0].toUpperCase(); // P, F, T, R
+      if (!byStreet[streetKey]) byStreet[streetKey] = [];
+      byStreet[streetKey].push(action);
+    });
+
+    return byStreet;
+  };
+
+  const playerActions = getPlayerActions();
+
+  // Get action symbol
+  const getActionSymbol = (action) => {
+    switch (action.action) {
+      case 'fold': return 'F';
+      case 'check': return 'X';
+      case 'call': return 'C';
+      case 'bet':
+      case 'raise': return 'R';
+      case 'allin': return 'A';
+      default: return '?';
+    }
+  };
+
+  // Build class names
+  const seatClasses = ['player-seat', `seat-${seatIndex}`].join(' ');
+
+  const infoClasses = [
+    'player-info',
+    isActive && 'active',
+    hasFolded && 'folded',
+    isHero && 'hero'
+  ].filter(Boolean).join(' ');
+
+  const cardsClasses = [
+    'cards',
+    !isHero && 'small',
+    !hasFolded && !isHero && 'in-hand',
+    hasFolded && 'folded-cards'
+  ].filter(Boolean).join(' ');
 
   return (
-    <div
-      className={`
-        absolute flex flex-col items-center gap-2 transition-all duration-300
-        ${isFolded ? 'opacity-40' : 'opacity-100'}
-        ${isActionOn ? 'scale-105' : ''}
-      `}
-      style={style}
-    >
-      {/* Player info box */}
-      <div
-        className={`
-          relative px-4 py-2 rounded-xl min-w-[100px] text-center
-          ${isActionOn
-            ? 'bg-gradient-to-b from-amber-500/30 to-amber-700/30 border-2 border-amber-400 shadow-lg shadow-amber-500/20'
-            : !isFolded
-              ? 'bg-gradient-to-b from-gray-700/80 to-gray-800/80 border border-gray-600'
-              : 'bg-gray-800/50 border border-gray-700/50'
-          }
-        `}
-      >
-        {/* Position label */}
-        <div className="text-xs text-gray-400 mb-1">
-          {position}
-          {player?.label && player.label !== position && (
-            <span className="ml-1 text-cyan-400 font-medium">
-              ({player.label})
-            </span>
-          )}
-        </div>
+    <div className={seatClasses}>
+      {/* Dealer button */}
+      {isDealer && (
+        <div className="dealer-button">D</div>
+      )}
 
-        {/* Stack */}
-        {hasPlayer && (
-          <div className="text-lg font-bold text-white">
-            {player.stack.toLocaleString()}
-          </div>
-        )}
-
-        {/* Current bet indicator */}
-        {player?.current_bet > 0 && !isFolded && (
-          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-amber-500/90 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-            {player.current_bet}
-          </div>
-        )}
-
-        {/* Dealer button */}
-        {showDealer && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-xs font-bold text-black shadow-md">
-            D
-          </div>
-        )}
-
-        {/* Human indicator */}
-        {player?.is_human && (
-          <div className="absolute -top-2 -left-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-md">
-            U
+      {/* Cards */}
+      <div className={cardsClasses}>
+        {!hasFolded && (
+          <div className="cards">
+            {cards && cards[0] !== '??' ? (
+              cards.map((card, i) => (
+                <Card key={i} card={card} small={!isHero} />
+              ))
+            ) : (
+              <>
+                <div className={`card facedown`} />
+                <div className={`card facedown`} />
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Hole cards - show face down for all players, face up only for human */}
-      {player?.hole_cards && !isFolded && (
-        <div className="mt-1">
-          <HoleCards
-            cards={player.hole_cards}
-            size="sm"
-            faceDown={player.hole_cards[0] === '??'}
-          />
-        </div>
-      )}
+      {/* Player info */}
+      <div className={infoClasses}>
+        <span className={`player-name${!isHero ? ' clickable' : ''}`} title={!isHero ? 'Click to download range log' : ''}>
+          {player.name || (isHero ? 'Hero' : `AI${seatIndex}`)}
+        </span>
+        <span className="player-stack">${player.stack}</span>
+        <span className="player-position">{player.position}</span>
+        {player.current_bet > 0 && (
+          <span className="player-bet-inline">${player.current_bet}</span>
+        )}
+      </div>
 
-      {/* Folded cards - greyed out */}
-      {player?.hole_cards && isFolded && (
-        <div className="mt-1 opacity-30">
-          <HoleCards
-            cards={['??', '??']}
-            size="sm"
-            faceDown={true}
-          />
+      {/* Action history */}
+      {playerActions && Object.keys(playerActions).length > 0 && (
+        <div className="action-history">
+          {Object.entries(playerActions).map(([street, actions]) => (
+            <div key={street} className="action-street">
+              <span className="street-label">{street}:</span>
+              {actions.map((action, i) => (
+                <span
+                  key={i}
+                  className={`action-symbol clickable action-${action.action}`}
+                  title={`${action.action}${action.amount ? ` $${action.amount}` : ''} - Click to view range`}
+                >
+                  {getActionSymbol(action)}
+                </span>
+              ))}
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Folded indicator */}
-      {isFolded && (
-        <div className="text-xs text-red-400 font-medium">FOLDED</div>
       )}
     </div>
   );
 }
-
-export default Seat;

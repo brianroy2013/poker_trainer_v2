@@ -1,56 +1,93 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export function StatsPanel({ stats, currentBet, playerBet }) {
-  if (!stats) return null;
+export function StatsPanel({ gameState }) {
+  const [selectedPlayer, setSelectedPlayer] = useState('ai1');
 
-  const toCall = stats.to_call || 0;
+  // Get AI players from game state
+  const getAIPlayers = () => {
+    if (!gameState?.players) return [];
+
+    const players = gameState.players;
+    if (Array.isArray(players)) {
+      return players.filter(p => p && !p.is_hero && !p.is_human);
+    }
+
+    // Object format
+    return Object.entries(players)
+      .filter(([pos, p]) => p && !p.is_hero && !p.is_human)
+      .map(([pos, p]) => ({ ...p, position: pos }));
+  };
+
+  const aiPlayers = getAIPlayers();
+
+  // Mock stats - in real implementation, these would come from tracking
+  const stats = {
+    vpip: '0%',
+    pfr: '0%',
+    threeBet: '-%',
+    af: '-',
+    cbet: '-%',
+    wtsd: '0%',
+    wssd: '-%',
+    hands: '1'
+  };
 
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 border border-gray-700">
-      <h3 className="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wider">
-        Statistics
-      </h3>
+    <div className="stats-panel">
+      <h3>AI Statistics</h3>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* Pot Odds */}
-        <div className="bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">Pot Odds</div>
-          <div className="text-lg font-bold text-cyan-400">
-            {stats.pot_odds}
-          </div>
-        </div>
+      <select
+        className="player-select"
+        value={selectedPlayer}
+        onChange={(e) => setSelectedPlayer(e.target.value)}
+      >
+        {aiPlayers.map((player, i) => (
+          <option key={i} value={`ai${i + 1}`}>
+            {player.name || `AI${i + 1}`} ({player.position})
+          </option>
+        ))}
+        {aiPlayers.length === 0 && (
+          <>
+            <option value="ai1">AI1 (SB)</option>
+            <option value="ai2">AI2 (BB)</option>
+            <option value="ai3">AI3 (UTG)</option>
+            <option value="ai4">AI4 (MP)</option>
+            <option value="ai5">AI5 (CO)</option>
+          </>
+        )}
+      </select>
 
-        {/* SPR */}
-        <div className="bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">SPR</div>
-          <div className="text-lg font-bold text-purple-400">
-            {stats.spr}
-          </div>
-        </div>
-
-        {/* To Call */}
-        <div className="bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">To Call</div>
-          <div className="text-lg font-bold text-green-400">
-            {toCall > 0 ? toCall.toLocaleString() : '-'}
-          </div>
-        </div>
-
-        {/* Call % of Pot */}
-        <div className="bg-gray-900/50 rounded-lg p-3">
-          <div className="text-xs text-gray-500 mb-1">Call % Pot</div>
-          <div className="text-lg font-bold text-amber-400">
-            {stats.call_percent_pot > 0 ? `${stats.call_percent_pot}%` : '-'}
-          </div>
-        </div>
+      <div className="stat-row">
+        <span className="stat-label">VPIP</span>
+        <span className="stat-value">{stats.vpip}</span>
       </div>
-
-      {/* Effective Pot */}
-      <div className="mt-3 bg-gray-900/50 rounded-lg p-3">
-        <div className="text-xs text-gray-500 mb-1">Effective Pot</div>
-        <div className="text-lg font-bold text-white">
-          {stats.effective_pot?.toLocaleString() || 0}
-        </div>
+      <div className="stat-row">
+        <span className="stat-label">PFR</span>
+        <span className="stat-value">{stats.pfr}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">3-Bet</span>
+        <span className="stat-value">{stats.threeBet}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">AF</span>
+        <span className="stat-value">{stats.af}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">C-Bet</span>
+        <span className="stat-value">{stats.cbet}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">WTSD</span>
+        <span className="stat-value">{stats.wtsd}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">W$SD</span>
+        <span className="stat-value">{stats.wssd}</span>
+      </div>
+      <div className="stat-row">
+        <span className="stat-label">Hands</span>
+        <span className="stat-value">{stats.hands}</span>
       </div>
     </div>
   );
