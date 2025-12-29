@@ -1,7 +1,62 @@
 import React from 'react';
 import Card from '../Cards/Card';
 
+const BIG_BLIND = 5;
+
+// Get action symbol for display
+const getActionSymbol = (action) => {
+  switch (action.action) {
+    case 'fold': return 'F';
+    case 'check': return 'X';
+    case 'call': {
+      // Show call amount in BB with 1 decimal precision
+      if (action.call_amount && action.call_amount > 0) {
+        const bbAmount = (action.call_amount / BIG_BLIND).toFixed(1);
+        return `C ${bbAmount}BB`;
+      }
+      return 'C';
+    }
+    case 'bet':
+    case 'raise': {
+      // For preflop, show raise in BB (e.g., "R 4BB")
+      if (action.amount && action.street === 'preflop') {
+        const bbAmount = Math.round(action.amount / BIG_BLIND);
+        return `R ${bbAmount}BB`;
+      }
+      // For postflop, show as multiplier of current bet
+      if (action.amount && action.current_bet && action.current_bet > 0) {
+        const multiplier = Math.round(action.amount / action.current_bet);
+        return `R ${multiplier}x`;
+      }
+      return 'R';
+    }
+    case 'allin': return 'A';
+    default: return '?';
+  }
+};
+
+// Get player actions grouped by street
+const getPlayerActionsForPosition = (actionHistory, pos) => {
+  if (!actionHistory || actionHistory.length === 0) return null;
+
+  const playerActions = actionHistory.filter(a => a.position === pos);
+  if (playerActions.length === 0) return null;
+
+  const byStreet = {};
+  playerActions.forEach(action => {
+    const street = action.street || 'preflop';
+    const streetKey = street[0].toUpperCase();
+    if (!byStreet[streetKey]) byStreet[streetKey] = [];
+    byStreet[streetKey].push(action);
+  });
+
+  return byStreet;
+};
+
 export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded }) {
+  // Get actions for this position from backend action history
+  const positionActions = getPlayerActionsForPosition(actionHistory, position);
+
   // Render empty seat (non-active player)
   if (isEmpty) {
     const stack = emptyPlayerData?.stack ?? 1000;
@@ -35,6 +90,21 @@ export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isD
         {currentBet > 0 && (
           <div className="player-bet">${currentBet}</div>
         )}
+        {/* Action tracking for empty seats */}
+        {positionActions && Object.keys(positionActions).length > 0 && (
+          <div className="action-history">
+            {Object.entries(positionActions).map(([street, actions]) => (
+              <div key={street} className="action-street">
+                <span className="street-label">{street}:</span>
+                {actions.map((action, i) => (
+                  <span key={i} className={`action-symbol action-${action.action}`}>
+                    {getActionSymbol(action)}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -44,40 +114,6 @@ export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isD
   const isHero = player.is_hero || player.is_human;
   const playerFolded = player.folded || !player.is_active;
   const cards = player.cards || player.hole_cards;
-
-  // Get action history for this player
-  const getPlayerActions = () => {
-    if (!actionHistory || actionHistory.length === 0) return null;
-
-    const playerActions = actionHistory.filter(a => a.position === player.position);
-    if (playerActions.length === 0) return null;
-
-    // Group by street
-    const byStreet = {};
-    playerActions.forEach(action => {
-      const street = action.street || 'preflop';
-      const streetKey = street[0].toUpperCase(); // P, F, T, R
-      if (!byStreet[streetKey]) byStreet[streetKey] = [];
-      byStreet[streetKey].push(action);
-    });
-
-    return byStreet;
-  };
-
-  const playerActions = getPlayerActions();
-
-  // Get action symbol
-  const getActionSymbol = (action) => {
-    switch (action.action) {
-      case 'fold': return 'F';
-      case 'check': return 'X';
-      case 'call': return 'C';
-      case 'bet':
-      case 'raise': return 'R';
-      case 'allin': return 'A';
-      default: return '?';
-    }
-  };
 
   // Build class names
   const seatClasses = ['player-seat', `seat-${seatIndex}`].join(' ');
@@ -136,16 +172,16 @@ export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isD
       )}
 
       {/* Action history */}
-      {playerActions && Object.keys(playerActions).length > 0 && (
+      {positionActions && Object.keys(positionActions).length > 0 && (
         <div className="action-history">
-          {Object.entries(playerActions).map(([street, actions]) => (
+          {Object.entries(positionActions).map(([street, actions]) => (
             <div key={street} className="action-street">
               <span className="street-label">{street}:</span>
               {actions.map((action, i) => (
                 <span
                   key={i}
-                  className={`action-symbol clickable action-${action.action}`}
-                  title={`${action.action}${action.amount ? ` $${action.amount}` : ''} - Click to view range`}
+                  className={`action-symbol action-${action.action}`}
+                  title={`${action.action}${action.amount ? ` $${action.amount}` : ''}`}
                 >
                   {getActionSymbol(action)}
                 </span>

@@ -74,6 +74,7 @@ class GameState:
         self.hand_complete: bool = False
         self.winner: Optional[str] = None
         self.human_position: str = ''
+        self.action_history: List[Dict[str, Any]] = []
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -93,6 +94,7 @@ class GameState:
         self.last_aggressor = 'BB'
         self.human_position = hero_position
         self.villain_position = villain_position
+        self.action_history = []
 
         # Create all 6 players - only hero and villain are "active" (won't auto-fold)
         self.players = {}
@@ -234,6 +236,23 @@ class GameState:
         if action not in available:
             return {'success': False, 'error': f'Invalid action: {action}'}
 
+        # Calculate call amount for recording
+        call_amount = None
+        if action == 'call':
+            call_amount = self.current_bet - player.current_bet
+            call_amount = min(call_amount, player.stack)
+
+        # Record action in history
+        action_record = {
+            'position': player.position,
+            'action': action,
+            'street': self.street,
+            'amount': amount if action in ['raise', 'bet'] else None,
+            'call_amount': call_amount,
+            'current_bet': self.current_bet if action == 'raise' else None
+        }
+        self.action_history.append(action_record)
+
         if action == 'fold':
             player.folded = True
             player.acted_this_street = True
@@ -345,5 +364,6 @@ class GameState:
             'current_bet': self.current_bet,
             'stats': self.get_stats(),
             'hand_complete': self.hand_complete,
-            'winner': self.winner
+            'winner': self.winner,
+            'action_history': self.action_history
         }

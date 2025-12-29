@@ -8,7 +8,7 @@ const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'];
 // Preflop action order (UTG acts first, then clockwise)
 const PREFLOP_ACTION_ORDER = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
 
-export default function PokerTable({ gameState, onHeroCanAct }) {
+export default function PokerTable({ gameState, onHeroCanAct, onComputerAction }) {
   const [visualActionOn, setVisualActionOn] = useState(null);
   const [foldedPositions, setFoldedPositions] = useState(new Set());
   const [preflopDone, setPreflopDone] = useState(false);
@@ -59,26 +59,22 @@ export default function PokerTable({ gameState, onHeroCanAct }) {
     // If it's a non-active player, they fold after delay
     const delay = isVillain ? 500 : 500;
 
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
+      // Update visual fold state (for card animation)
       if (!isVillain) {
-        // Non-active player folds
         setFoldedPositions(prev => new Set([...prev, visualActionOn]));
       }
 
-      // Move to next position
+      // Trigger backend API to record the action
+      await onComputerAction?.();
+
+      // Move to next position in preflop order
       const currentIndex = PREFLOP_ACTION_ORDER.indexOf(visualActionOn);
-      let nextIndex = (currentIndex + 1) % 6;
-      let nextPosition = PREFLOP_ACTION_ORDER[nextIndex];
+      const nextIndex = (currentIndex + 1) % 6;
+      const nextPosition = PREFLOP_ACTION_ORDER[nextIndex];
 
-      // Skip already folded positions
-      while (foldedPositions.has(nextPosition) && nextIndex !== currentIndex) {
-        nextIndex = (nextIndex + 1) % 6;
-        nextPosition = PREFLOP_ACTION_ORDER[nextIndex];
-      }
-
-      // Check if we've gone around the table (preflop complete)
-      if (nextPosition === 'BB' && foldedPositions.size >= 4) {
-        // All non-active players have folded, preflop visual complete
+      // If next position is hero, preflop visual is complete
+      if (nextPosition === heroPosition) {
         setPreflopDone(true);
         setVisualActionOn(null);
         onHeroCanAct?.(true);
@@ -88,7 +84,7 @@ export default function PokerTable({ gameState, onHeroCanAct }) {
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [visualActionOn, gameState, heroPosition, villainPosition, street, preflopDone, foldedPositions, onHeroCanAct]);
+  }, [visualActionOn, gameState, heroPosition, villainPosition, street, preflopDone, onHeroCanAct, onComputerAction]);
 
   if (!gameState) {
     return (

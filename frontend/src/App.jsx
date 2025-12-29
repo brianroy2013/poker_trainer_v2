@@ -13,6 +13,7 @@ function App() {
     processingComputer,
     startNewGame,
     submitAction,
+    triggerComputerAction,
     isHumanTurn
   } = useGameState();
 
@@ -81,7 +82,11 @@ function App() {
 
       <div className="game-container">
         <div className="main-area">
-          <PokerTable gameState={gameState} onHeroCanAct={setHeroCanAct} />
+          <PokerTable
+            gameState={gameState}
+            onHeroCanAct={setHeroCanAct}
+            onComputerAction={triggerComputerAction}
+          />
 
           {gameState?.hand_complete ? (
             <div className="showdown-message">

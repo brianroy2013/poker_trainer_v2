@@ -104,6 +104,18 @@ export function useGameState() {
     }
   }, [processComputerActions]);
 
+  // Trigger a single computer action (called by PokerTable during visual animation)
+  const triggerComputerAction = useCallback(async () => {
+    try {
+      const state = await gameApi.computerAction();
+      setGameState(state);
+      return state;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to process computer action');
+      return null;
+    }
+  }, []);
+
   const isHumanTurn = gameState &&
     gameState.action_on &&
     gameState.players[gameState.action_on]?.is_human &&
@@ -118,6 +130,7 @@ export function useGameState() {
     startNewGame,
     submitAction,
     resetGame,
+    triggerComputerAction,
     isHumanTurn
   };
 }
