@@ -1,22 +1,95 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Seat from './Seat';
 import Card from '../Cards/Card';
 
-// Map position names to seat indices (0-5 for 6-max)
-// Backend uses: UTG, MP, CO, BTN, SB, BB
-const POSITION_TO_SEAT = {
-  'BTN': 0, // Hero position (bottom center)
-  'SB': 1,  // Bottom left
-  'BB': 2,  // Top left
-  'UTG': 3, // Top center
-  'MP': 4,  // Top right
-  'CO': 5   // Bottom right
-};
-
-// Position order for rendering (matches seat positions 0-5)
+// Position order around the table (clockwise from seat 0)
 const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'];
 
-export default function PokerTable({ gameState }) {
+// Preflop action order (UTG acts first, then clockwise)
+const PREFLOP_ACTION_ORDER = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
+
+export default function PokerTable({ gameState, onHeroCanAct }) {
+  const [visualActionOn, setVisualActionOn] = useState(null);
+  const [foldedPositions, setFoldedPositions] = useState(new Set());
+  const [preflopDone, setPreflopDone] = useState(false);
+  const handIdRef = useRef(null);
+
+  const board = gameState?.board || gameState?.community_cards || [];
+  const pot = gameState?.pot || 0;
+  const street = gameState?.street || 'preflop';
+  const heroPosition = gameState?.human_position;
+  const villainPosition = gameState?.villain_position;
+
+  // Reset state when a new hand starts
+  useEffect(() => {
+    if (!gameState) return;
+
+    const currentHandId = `${heroPosition}-${villainPosition}-${gameState.hand_id || Date.now()}`;
+
+    if (handIdRef.current !== currentHandId) {
+      handIdRef.current = currentHandId;
+      setFoldedPositions(new Set());
+      setPreflopDone(false);
+      // Start action at UTG
+      setVisualActionOn('UTG');
+      // Hero can't act until visual action reaches them
+      onHeroCanAct?.(false);
+    }
+  }, [gameState, heroPosition, villainPosition, onHeroCanAct]);
+
+  // Handle preflop action progression
+  useEffect(() => {
+    if (!gameState || preflopDone || !visualActionOn) return;
+    if (street !== 'preflop') {
+      setPreflopDone(true);
+      onHeroCanAct?.(true);
+      return;
+    }
+
+    const isHero = visualActionOn === heroPosition;
+    const isVillain = visualActionOn === villainPosition;
+
+    // If it's hero's turn, wait for their action (handled by parent)
+    if (isHero) {
+      onHeroCanAct?.(true);
+      return;
+    }
+
+    // If it's villain's turn, they call/check - move to next
+    // If it's a non-active player, they fold after delay
+    const delay = isVillain ? 1000 : 1000;
+
+    const timer = setTimeout(() => {
+      if (!isVillain) {
+        // Non-active player folds
+        setFoldedPositions(prev => new Set([...prev, visualActionOn]));
+      }
+
+      // Move to next position
+      const currentIndex = PREFLOP_ACTION_ORDER.indexOf(visualActionOn);
+      let nextIndex = (currentIndex + 1) % 6;
+      let nextPosition = PREFLOP_ACTION_ORDER[nextIndex];
+
+      // Skip already folded positions
+      while (foldedPositions.has(nextPosition) && nextIndex !== currentIndex) {
+        nextIndex = (nextIndex + 1) % 6;
+        nextPosition = PREFLOP_ACTION_ORDER[nextIndex];
+      }
+
+      // Check if we've gone around the table (preflop complete)
+      if (nextPosition === 'BB' && foldedPositions.size >= 4) {
+        // All non-active players have folded, preflop visual complete
+        setPreflopDone(true);
+        setVisualActionOn(null);
+        onHeroCanAct?.(true);
+      } else {
+        setVisualActionOn(nextPosition);
+      }
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [visualActionOn, gameState, heroPosition, villainPosition, street, preflopDone, foldedPositions, onHeroCanAct]);
+
   if (!gameState) {
     return (
       <div className="poker-table" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -25,51 +98,45 @@ export default function PokerTable({ gameState }) {
     );
   }
 
-  const board = gameState.board || gameState.community_cards || [];
-  const pot = gameState.pot || 0;
-  const street = gameState.street || 'preflop';
+  // Calculate rotation so hero is always at seat 0
+  const heroPositionIndex = POSITION_ORDER.indexOf(heroPosition);
+  const rotationOffset = heroPositionIndex;
 
-  // Get players in correct order
-  const getPlayersArray = () => {
-    if (Array.isArray(gameState.players)) {
-      return gameState.players;
-    }
-    // V2 format - object with position keys
-    return POSITION_ORDER.map(pos => {
-      const player = gameState.players[pos];
-      if (player) {
-        return {
+  // Build all 6 seats with rotated positions
+  const getAllSeats = () => {
+    const seats = [];
+
+    for (let seatIndex = 0; seatIndex < 6; seatIndex++) {
+      // Calculate which position sits at this seat (reverse of getSeatForPosition)
+      const positionIndex = (seatIndex + rotationOffset) % 6;
+      const position = POSITION_ORDER[positionIndex];
+
+      const isHeroSeat = position === heroPosition;
+      const isVillainSeat = position === villainPosition;
+      const player = gameState.players?.[position];
+      const hasFolded = foldedPositions.has(position);
+
+      seats.push({
+        seatIndex,
+        position,
+        player: (isHeroSeat || isVillainSeat) ? {
           ...player,
-          position: pos,
-          cards: player.hole_cards || player.cards
-        };
-      }
-      return null;
-    });
-  };
-
-  const players = getPlayersArray();
-  const actionOn = gameState.action_on;
-
-  // Determine which seat index is active
-  const getActiveSeatIndex = () => {
-    if (typeof actionOn === 'number') return actionOn;
-    return POSITION_TO_SEAT[actionOn] ?? -1;
-  };
-
-  const activeSeatIndex = getActiveSeatIndex();
-
-  // Find dealer position
-  const getDealerSeatIndex = () => {
-    if (gameState.dealer_position !== undefined) {
-      return gameState.dealer_position;
+          position,
+          cards: player?.hole_cards || player?.cards,
+        } : null,
+        isEmpty: !isHeroSeat && !isVillainSeat,
+        hasFolded,
+        isDealer: position === 'BTN'
+      });
     }
-    // Find BTN player
-    const btnIndex = players.findIndex(p => p?.position === 'BTN');
-    return btnIndex >= 0 ? btnIndex : 1;
+
+    return seats;
   };
 
-  const dealerSeatIndex = getDealerSeatIndex();
+  const allSeats = getAllSeats();
+
+  // During preflop progression, show visual action; otherwise use game state
+  const displayActionOn = !preflopDone && street === 'preflop' ? visualActionOn : gameState.action_on;
 
   return (
     <div className="poker-table">
@@ -95,14 +162,17 @@ export default function PokerTable({ gameState }) {
         </div>
       </div>
 
-      {/* Player seats */}
-      {players.map((player, i) => (
+      {/* Render all 6 seats */}
+      {allSeats.map((seat) => (
         <Seat
-          key={i}
-          player={player}
-          seatIndex={i}
-          isActive={activeSeatIndex === i}
-          isDealer={dealerSeatIndex === i}
+          key={seat.seatIndex}
+          player={seat.player}
+          seatIndex={seat.seatIndex}
+          position={seat.position}
+          isEmpty={seat.isEmpty}
+          hasFolded={seat.hasFolded}
+          isActive={displayActionOn === seat.position}
+          isDealer={seat.isDealer}
           actionHistory={gameState.action_history}
         />
       ))}
@@ -122,7 +192,7 @@ export default function PokerTable({ gameState }) {
           textAlign: 'center'
         }}>
           <div style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--gold)' }}>
-            {gameState.winner} Wins!
+            {gameState.players[gameState.winner]?.label || gameState.winner} Wins!
           </div>
           <div style={{ color: '#ccc', fontSize: 18, marginTop: 8 }}>
             Pot: ${pot}

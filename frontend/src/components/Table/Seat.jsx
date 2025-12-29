@@ -1,11 +1,42 @@
 import React from 'react';
 import Card from '../Cards/Card';
 
-export default function Seat({ player, seatIndex, isActive, isDealer, actionHistory }) {
+export default function Seat({ player, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded }) {
+  // Render empty seat (non-active player)
+  if (isEmpty) {
+    return (
+      <div className={`player-seat seat-${seatIndex}`}>
+        {isDealer && <div className="dealer-button">D</div>}
+        {hasFolded ? (
+          // Folded - show dashed card backs
+          <div className="cards small folded-cards">
+            <div className="cards">
+              <div className="card facedown folded" />
+              <div className="card facedown folded" />
+            </div>
+          </div>
+        ) : (
+          // Not yet acted - show solid card backs
+          <div className="cards small in-hand">
+            <div className="cards">
+              <div className="card facedown" />
+              <div className="card facedown" />
+            </div>
+          </div>
+        )}
+        <div className={`player-info${hasFolded ? ' folded' : ''}${isActive ? ' active' : ''}`}>
+          <span className="player-name">Villain</span>
+          <span className="player-stack">$1000</span>
+          <span className="player-position">{position}</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!player) return null;
 
   const isHero = player.is_hero || player.is_human;
-  const hasFolded = player.folded || !player.is_active;
+  const playerFolded = player.folded || !player.is_active;
   const cards = player.cards || player.hole_cards;
 
   // Get action history for this player
@@ -48,15 +79,15 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
   const infoClasses = [
     'player-info',
     isActive && 'active',
-    hasFolded && 'folded',
+    playerFolded && 'folded',
     isHero && 'hero'
   ].filter(Boolean).join(' ');
 
   const cardsClasses = [
     'cards',
     !isHero && 'small',
-    !hasFolded && !isHero && 'in-hand',
-    hasFolded && 'folded-cards'
+    !playerFolded && !isHero && 'in-hand',
+    playerFolded && 'folded-cards'
   ].filter(Boolean).join(' ');
 
   return (
@@ -68,7 +99,7 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
 
       {/* Cards */}
       <div className={cardsClasses}>
-        {!hasFolded && (
+        {!playerFolded && (
           <div className="cards">
             {cards && cards[0] !== '??' ? (
               cards.map((card, i) => (

@@ -19,6 +19,7 @@ function App() {
   const [showSetup, setShowSetup] = useState(true);
   const [gameConfig, setGameConfig] = useState(null);
   const [handNumber, setHandNumber] = useState(1);
+  const [heroCanAct, setHeroCanAct] = useState(false);
 
   const handleStartGame = async (config) => {
     setGameConfig(config);
@@ -95,7 +96,7 @@ function App() {
 
       <div className="game-container">
         <div className="main-area">
-          <PokerTable gameState={gameState} />
+          <PokerTable gameState={gameState} onHeroCanAct={setHeroCanAct} />
 
           {gameState?.hand_complete ? (
             <div className="showdown-message">
@@ -105,11 +106,16 @@ function App() {
               {gameState.winning_hand && (
                 <div className="hand-rank">{gameState.winning_hand}</div>
               )}
-              <button className="new-hand-btn" onClick={handleNewHand} disabled={loading} style={{ marginTop: 12 }}>
-                Deal New Hand
-              </button>
+              <div className="hand-complete-buttons">
+                <button className="new-hand-btn" onClick={handleNewHand} disabled={loading}>
+                  Deal New Hand
+                </button>
+                <button className="different-spot-btn" onClick={handleNewGame} disabled={loading}>
+                  Train a Different Spot
+                </button>
+              </div>
             </div>
-          ) : isHumanTurn ? (
+          ) : isHumanTurn && heroCanAct ? (
             <ActionPanel
               availableActions={gameState?.available_actions || []}
               minRaise={gameState?.min_raise || 0}

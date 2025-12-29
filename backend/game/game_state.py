@@ -8,8 +8,8 @@ PREFLOP_ORDER = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
 POSTFLOP_ORDER = ['SB', 'BB', 'UTG', 'MP', 'CO', 'BTN']
 STREETS = ['preflop', 'flop', 'turn', 'river', 'showdown']
 
-BIG_BLIND = 10
-SMALL_BLIND = 5
+BIG_BLIND = 5
+SMALL_BLIND = 2
 STARTING_STACK = 1000
 
 
@@ -112,14 +112,12 @@ class GameState:
         # Initialize seats
         self.seats = {pos: {'active': True, 'folded': False} for pos in POSITIONS}
 
-        # Post blinds
+        # Post blinds (current_bet will be added to pot when street advances)
         self.players['SB'].stack -= SMALL_BLIND
         self.players['SB'].current_bet = SMALL_BLIND
-        self.pot += SMALL_BLIND
 
         self.players['BB'].stack -= BIG_BLIND
         self.players['BB'].current_bet = BIG_BLIND
-        self.pot += BIG_BLIND
 
         # Deal cards to all players
         for pos in POSITIONS:

@@ -200,6 +200,19 @@ body {
   border: 1px solid var(--chip-blue);
 }
 
+/* Empty seats */
+.empty-seat .player-info.empty {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  opacity: 0.5;
+}
+
+.empty-seat .player-info.empty .player-position {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .player-name {
   font-weight: 600;
   font-size: 0.85rem;
@@ -357,6 +370,13 @@ body {
   background: linear-gradient(135deg, #2d5a87, #4a90c2);
   box-shadow: 0 0 10px rgba(74, 144, 194, 0.6), 0 0 20px rgba(74, 144, 194, 0.3), 0 2px 6px rgba(0, 0, 0, 0.4);
   border: 2px solid rgba(100, 180, 255, 0.5);
+}
+
+/* Folded cards - dashed border, dimmed */
+.card.facedown.folded {
+  opacity: 0.4;
+  border: 2px dashed rgba(255, 255, 255, 0.3);
+  box-shadow: none;
 }
 
 /* Action Buttons */
@@ -587,6 +607,39 @@ body {
 .new-hand-btn:hover {
   background: #ffed4a;
   transform: scale(1.02);
+}
+
+.new-hand-btn:disabled,
+.different-spot-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Hand Complete Buttons */
+.hand-complete-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.different-spot-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+  padding: 10px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.different-spot-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* Showdown Message */
