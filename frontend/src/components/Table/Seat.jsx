@@ -1,9 +1,12 @@
 import React from 'react';
 import Card from '../Cards/Card';
 
-export default function Seat({ player, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded }) {
+export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded }) {
   // Render empty seat (non-active player)
   if (isEmpty) {
+    const stack = emptyPlayerData?.stack ?? 1000;
+    const currentBet = emptyPlayerData?.current_bet ?? 0;
+
     return (
       <div className={`player-seat seat-${seatIndex}`}>
         {isDealer && <div className="dealer-button">D</div>}
@@ -27,8 +30,11 @@ export default function Seat({ player, seatIndex, isActive, isDealer, actionHist
         <div className={`player-info${hasFolded ? ' folded' : ''}${isActive ? ' active' : ''}`}>
           <span className="player-position">{position}</span>
           <span className="player-name">Villain</span>
-          <span className="player-stack">$1000</span>
+          <span className="player-stack">${stack}</span>
         </div>
+        {currentBet > 0 && (
+          <div className="player-bet">${currentBet}</div>
+        )}
       </div>
     );
   }

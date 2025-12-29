@@ -123,6 +123,12 @@ export default function PokerTable({ gameState, onHeroCanAct }) {
           ...player,
           position,
           cards: player?.hole_cards || player?.cards,
+          current_bet: player?.current_bet || 0,
+        } : null,
+        // Pass actual player data for empty seats (for blinds display)
+        emptyPlayerData: (!isHeroSeat && !isVillainSeat) ? {
+          stack: player?.stack || 1000,
+          current_bet: player?.current_bet || 0,
         } : null,
         isEmpty: !isHeroSeat && !isVillainSeat,
         hasFolded,
@@ -167,6 +173,7 @@ export default function PokerTable({ gameState, onHeroCanAct }) {
         <Seat
           key={seat.seatIndex}
           player={seat.player}
+          emptyPlayerData={seat.emptyPlayerData}
           seatIndex={seat.seatIndex}
           position={seat.position}
           isEmpty={seat.isEmpty}
