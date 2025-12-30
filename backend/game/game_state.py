@@ -517,13 +517,75 @@ class GameState:
             river_card = str(self.community_cards[4])
             self.pio_node = f"{self.pio_node}:{river_card}"
 
+    def _get_player_cumulative_invested(self, player_position: str) -> int:
+        """
+        Parse the node path to calculate how much the player has invested total (across all streets).
+
+        PioSolver bet amounts are cumulative for the entire hand, not per street.
+        We need to track each player's total investment from their actions in the node path.
+
+        Args:
+            player_position: 'OOP' or 'IP'
+
+        Returns:
+            Total chips invested by this player so far
+        """
+        if not self.pio_node:
+            return 0
+
+        parts = self.pio_node.split(':')
+
+        # Determine which positions in the action sequence belong to which player
+        # After 'r:0', actions alternate: OOP acts first postflop, then IP, etc.
+        # Cards (like '6h') don't count as actions - they mark street transitions
+
+        # Track who acts when and their investments
+        oop_invested = 0
+        ip_invested = 0
+        is_oop_turn = True  # OOP acts first postflop
+
+        for part in parts:
+            if part in ('r', '0'):
+                continue
+
+            # Check if this is a card (2 chars, second is suit)
+            if len(part) == 2 and part[1] in 'shdc':
+                # Street transition - turn order resets, OOP acts first
+                is_oop_turn = True
+                continue
+
+            # This is an action
+            if part == 'c':
+                # Call - player matches the current bet
+                if is_oop_turn:
+                    oop_invested = ip_invested  # Match opponent's bet
+                else:
+                    ip_invested = oop_invested
+            elif part == 'f':
+                pass  # Fold doesn't change investment
+            elif part.startswith('b'):
+                try:
+                    bet_total = int(part[1:])
+                    if is_oop_turn:
+                        oop_invested = bet_total
+                    else:
+                        ip_invested = bet_total
+                except ValueError:
+                    pass
+
+            # Alternate turns (unless it's a check/bet situation where action continues)
+            is_oop_turn = not is_oop_turn
+
+        return oop_invested if player_position == 'OOP' else ip_invested
+
     def _get_pio_actions(self) -> Optional[List[Dict]]:
         """
         Get available actions from PioSolver tree at current node.
 
         Returns:
-            List of action dicts with 'type' and optionally 'amount' for bets/raises
-            e.g., [{'type': 'check'}, {'type': 'raise', 'amount': 21}, {'type': 'raise', 'amount': 42}]
+            List of action dicts with 'type' and optionally 'amount' and 'total' for bets/raises
+            e.g., [{'type': 'check'}, {'type': 'raise', 'amount': 21, 'total': 42}]
+            'amount' = actual chips being added to pot, 'total' = cumulative (PioSolver format)
         """
         # Only use PioSolver actions from flop onwards
         if not self.pio_connection or not self.pio_node or self.street == 'preflop':
@@ -537,6 +599,13 @@ class GameState:
             player = self.get_player_to_act()
             if not player:
                 return None
+
+            # Determine if hero is OOP or IP based on position
+            # In heads-up BTN vs BB: BTN is IP, BB is OOP
+            hero_pio_position = 'IP' if player.position == 'BTN' else 'OOP'
+
+            # Get cumulative investment for this player from the node path
+            player_invested = self._get_player_cumulative_invested(hero_pio_position)
 
             actions = []
             for child in children:
@@ -552,9 +621,16 @@ class GameState:
                         actions.append({'type': 'call'})
                 elif pio_action.startswith('b'):
                     # Bet/raise with specific amount
+                    # PioSolver 'total' is cumulative for entire hand
+                    # 'amount' is actual chips being added (total - already invested)
                     try:
-                        amount = int(pio_action[1:])
-                        actions.append({'type': 'raise', 'amount': amount})
+                        total = int(pio_action[1:])
+                        actual_bet = total - player_invested
+                        actions.append({
+                            'type': 'raise',
+                            'amount': actual_bet,  # Chips being added to pot
+                            'total': total         # Cumulative (for PioSolver node tracking)
+                        })
                     except ValueError:
                         continue
 

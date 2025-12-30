@@ -128,12 +128,14 @@ export function ActionPanel({
           }
           if (action.type === 'raise' && action.amount) {
             const betColor = betColorMap[action.amount] || interpolateBetColor(0.5);
+            // Use 'total' for the action (PioSolver cumulative), display 'amount' (actual bet)
+            const actionAmount = action.total || action.amount;
             return (
               <button
                 key={index}
                 className="action-btn raise"
                 style={{ backgroundColor: betColor }}
-                onClick={() => handleAction('raise', action.amount)}
+                onClick={() => handleAction('raise', actionAmount)}
                 disabled={disabled}
               >
                 Bet {action.amount}

@@ -120,10 +120,23 @@ class ComputerPlayer:
 
         elif pio_action.startswith('b'):
             # Bet or raise
+            # PioSolver amount is cumulative for entire hand
+            # Need to calculate actual bet for this action
             try:
-                amount = int(pio_action[1:])
+                pio_total = int(pio_action[1:])
+
+                # Determine if villain is OOP or IP
+                # In heads-up BTN vs BB: BTN is IP, BB is OOP
+                villain_pio_position = 'IP' if player.position == 'BTN' else 'OOP'
+
+                # Get cumulative investment from node path
+                player_invested = game_state._get_player_cumulative_invested(villain_pio_position)
+
+                # Actual bet = PioSolver total - already invested
+                actual_bet = pio_total - player_invested
+
                 if 'raise' in available:
-                    return {'action': 'raise', 'amount': amount}
+                    return {'action': 'raise', 'amount': actual_bet}
             except ValueError:
                 pass
 
