@@ -118,36 +118,37 @@ const getActionSymbol = (actionRecord) => {
   return action;
 };
 
-// PioSolver hand strength categories (best to worst)
+// PioSolver hand strength categories - ordered strongest (0) to weakest (18)
+// Names must match exactly what PioSolver returns
 const HAND_STRENGTH_CONFIG = {
-  straight_flush: { label: 'Str Flush', color: '#9b59b6', order: 0 },
-  quads: { label: 'Quads', color: '#8e44ad', order: 1 },
-  top_fullhouse: { label: 'Top FH', color: '#e74c3c', order: 2 },
-  full_house: { label: 'Full House', color: '#c0392b', order: 3 },
-  flush: { label: 'Flush', color: '#3498db', order: 4 },
-  straight: { label: 'Straight', color: '#2980b9', order: 5 },
-  trips: { label: 'Trips', color: '#27ae60', order: 6 },
-  weak_trips: { label: 'Weak Trips', color: '#2ecc71', order: 7 },
-  two_pair: { label: 'Two Pair', color: '#f39c12', order: 8 },
-  low_two_pair: { label: 'Low 2P', color: '#e67e22', order: 9 },
-  overpair: { label: 'Overpair', color: '#d35400', order: 10 },
-  top_pair: { label: 'Top Pair', color: '#e74c3c', order: 11 },
-  pp_above_tp: { label: 'PP > TP', color: '#c0392b', order: 12 },
-  pp_below_tp: { label: 'PP < TP', color: '#95a5a6', order: 13 },
-  middle_pair: { label: 'Mid Pair', color: '#7f8c8d', order: 14 },
-  weak_pair: { label: 'Weak Pair', color: '#6c7a89', order: 15 },
-  ace_high: { label: 'Ace High', color: '#5d6d7e', order: 16 },
-  king_high: { label: 'King High', color: '#4d5656', order: 17 },
-  nothing: { label: 'Nothing', color: '#34495e', order: 18 },
+  straight_flush: { label: 'Str Flush', color: '#ff44ff', order: 0 },  // Bright magenta
+  quads: { label: 'Quads', color: '#d94dff', order: 1 },               // Purple-magenta
+  top_fullhouse: { label: 'Top FH', color: '#ff5577', order: 2 },      // Bright coral
+  fullhouse: { label: 'Full House', color: '#ff6b6b', order: 3 },      // Salmon red
+  flush: { label: 'Flush', color: '#4dc3ff', order: 4 },               // Bright sky blue
+  straight: { label: 'Straight', color: '#55bbff', order: 5 },         // Light blue
+  set: { label: 'Set', color: '#44dd88', order: 6 },                   // Bright green
+  trips: { label: 'Trips', color: '#66e5a3', order: 7 },               // Light green
+  two_pair: { label: 'Two Pair', color: '#ffcc44', order: 8 },         // Bright gold
+  overpair: { label: 'Overpair', color: '#ff8844', order: 9 },         // Bright orange
+  top_pair_tp: { label: 'Top Pair TK', color: '#ff7755', order: 10 },  // Coral orange (top kicker)
+  top_pair: { label: 'Top Pair', color: '#ee8866', order: 11 },        // Soft orange
+  underpair: { label: 'Underpair', color: '#ddaa77', order: 12 },      // Tan
+  '2nd-pair': { label: '2nd Pair', color: '#bbaa99', order: 13 },      // Warm gray
+  '3rd-pair': { label: '3rd Pair', color: '#aabbcc', order: 14 },      // Light blue-gray
+  low_pair: { label: 'Low Pair', color: '#99aaaa', order: 15 },        // Gray-teal
+  ace_high: { label: 'Ace High', color: '#88aacc', order: 16 },        // Steel blue
+  king_high: { label: 'King High', color: '#7799aa', order: 17 },      // Muted blue
+  nothing: { label: 'Nothing', color: '#778899', order: 18 },          // Slate gray
 };
 
-// PioSolver draw categories
+// PioSolver draw categories - bright colors for dark background
 const DRAW_CONFIG = {
-  combo_draw: { label: 'Combo Draw', color: '#9b59b6', order: 0 },
-  flush_draw: { label: 'Flush Draw', color: '#3498db', order: 1 },
-  '8out_straight_draw': { label: 'OESD', color: '#27ae60', order: 2 },
-  '4out_straight_draw': { label: 'Gutshot', color: '#2ecc71', order: 3 },
-  no_draw: { label: 'No Draw', color: '#7f8c8d', order: 4 },
+  combo_draw: { label: 'Combo Draw', color: '#ff55dd', order: 0 },    // Hot pink
+  flush_draw: { label: 'Flush Draw', color: '#55ccff', order: 1 },    // Bright cyan
+  '8out_straight_draw': { label: 'OESD', color: '#55ee77', order: 2 },// Bright lime
+  '4out_straight_draw': { label: 'Gutshot', color: '#88ee99', order: 3 }, // Light lime
+  no_draw: { label: 'No Draw', color: '#99aabb', order: 4 },          // Cool gray
 };
 
 // Range Composition display component
@@ -178,7 +179,15 @@ function RangeComposition({ composition, showCombos, onToggleShowCombos }) {
       return orderA - orderB;
     });
 
+  // Find max percent across all categories to scale bars
+  const allPercents = [
+    ...sortedHandStrength.map(([_, val]) => val.percent),
+    ...sortedDraws.map(([_, val]) => val.percent)
+  ];
+  const maxPercent = Math.max(...allPercents, 1); // Minimum 1 to avoid division by zero
+
   const formatValue = (val) => showCombos ? val.combos : `${val.percent}%`;
+  const getBarWidth = (val) => (val.percent / maxPercent) * 100;
 
   return (
     <div className="range-composition">
@@ -211,7 +220,7 @@ function RangeComposition({ composition, showCombos, onToggleShowCombos }) {
                 <div className="bar-container">
                   <div
                     className="bar-fill"
-                    style={{ width: `${val.percent}%`, backgroundColor: config.color }}
+                    style={{ width: `${getBarWidth(val)}%`, backgroundColor: config.color }}
                   />
                 </div>
                 <span className="cat-percent">{formatValue(val)}</span>
@@ -233,7 +242,7 @@ function RangeComposition({ composition, showCombos, onToggleShowCombos }) {
                 <div className="bar-container">
                   <div
                     className="bar-fill"
-                    style={{ width: `${val.percent}%`, backgroundColor: config.color }}
+                    style={{ width: `${getBarWidth(val)}%`, backgroundColor: config.color }}
                   />
                 </div>
                 <span className="cat-percent">{formatValue(val)}</span>

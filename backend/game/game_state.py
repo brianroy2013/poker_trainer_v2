@@ -910,6 +910,8 @@ class GameState:
 
             hand_strength_names = category_names.get('hand_strength', [])
             draw_names = category_names.get('draws', [])
+            print(f"[GameState] Hand strength categories from PioSolver: {hand_strength_names}", flush=True)
+            print(f"[GameState] Draw categories from PioSolver: {draw_names}", flush=True)
             hand_strength_indices = category_indices.get('hand_strength', [])
             draw_indices = category_indices.get('draws', [])
 
