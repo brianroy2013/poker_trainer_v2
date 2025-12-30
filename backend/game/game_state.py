@@ -576,6 +576,17 @@ class GameState:
             return self.last_villain_strategy
 
         try:
+            # Determine which player is acting at this node
+            node_info = self.pio_connection.show_node(self.pio_node)
+            node_type = node_info.get('node_type', '')
+            # OOP_DEC = OOP decision, IP_DEC = IP decision
+            player = 'OOP' if 'OOP' in node_type else 'IP'
+
+            # Get range weights from show_range (1326 floats, 0-1 for each hand)
+            range_weights = self.pio_connection.show_range(player, self.pio_node)
+            if len(range_weights) != 1326:
+                return None
+
             # Get strategy at current node
             strategy = self.pio_connection.show_strategy(self.pio_node)
             if not strategy:
@@ -602,7 +613,7 @@ class GameState:
                 else:
                     return 12  # Offsuit (below diagonal)
 
-            # For each cell, store actions and count of combos in range
+            # For each cell, store range weight sum and action frequencies
             grid = [[None] * 13 for _ in range(13)]
 
             for i, hand in enumerate(hand_order):
@@ -624,38 +635,32 @@ class GameState:
                     if row < col:
                         row, col = col, row
 
-                # Get action frequencies for this hand (sum = how much of this combo is in range)
-                action_freqs = {}
-                total_freq = 0
-                for action, freqs in strategy.items():
-                    if i < len(freqs):
-                        freq = freqs[i]
-                        if freq > 0:
-                            action_freqs[action] = freq
-                            total_freq += freq
+                # Get range weight for this hand (how much of this combo is in range)
+                range_weight = range_weights[i] if i < len(range_weights) else 0
 
-                # Always count this combo, even if not in range
+                # Initialize cell if needed
                 if grid[row][col] is None:
-                    grid[row][col] = {'actions': {}, 'in_range_sum': 0, 'total_combos': 0}
+                    grid[row][col] = {'actions': {}, 'range_sum': 0}
 
-                grid[row][col]['total_combos'] += 1
+                # Add range weight
+                grid[row][col]['range_sum'] += range_weight
 
-                if total_freq > 0:
-                    # This combo is in range - add its frequencies
-                    grid[row][col]['in_range_sum'] += total_freq
-                    for action, freq in action_freqs.items():
-                        if action not in grid[row][col]['actions']:
-                            grid[row][col]['actions'][action] = 0
-                        grid[row][col]['actions'][action] += freq
+                # Get action frequencies for this hand (weighted by range)
+                if range_weight > 0:
+                    for action, freqs in strategy.items():
+                        if i < len(freqs) and freqs[i] > 0:
+                            if action not in grid[row][col]['actions']:
+                                grid[row][col]['actions'][action] = 0
+                            # Weight action frequency by range weight
+                            grid[row][col]['actions'][action] += freqs[i] * range_weight
 
-            # Normalize: divide action freqs by max possible combos to get true range %
+            # Normalize: divide by max possible combos to get true percentages
             for row in range(13):
                 for col in range(13):
                     max_combos = get_max_combos(row, col)
-                    if grid[row][col] and grid[row][col]['total_combos'] > 0:
+                    if grid[row][col] and grid[row][col]['range_sum'] > 0:
                         cell = grid[row][col]
-                        # Normalize action frequencies by max possible combos
-                        # This gives us the true "% of hand class in range taking this action"
+                        # Normalize by max combos to get % of hand class
                         normalized = {}
                         for action, freq_sum in cell['actions'].items():
                             normalized[action] = freq_sum / max_combos

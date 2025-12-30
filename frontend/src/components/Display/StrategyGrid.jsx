@@ -106,7 +106,7 @@ function StrategyGrid({ strategyData }) {
     }
 
     return {
-      background: `linear-gradient(to right, ${gradientParts.join(', ')})`,
+      background: `linear-gradient(to bottom, ${gradientParts.join(', ')})`,
     };
   };
 
