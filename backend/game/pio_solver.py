@@ -197,6 +197,54 @@ class PioSolverConnection:
 
         return strategy
 
+    def show_category_names(self) -> Dict[str, List[str]]:
+        """
+        Get hand strength and draw category names from PioSolver.
+
+        Returns:
+            Dict with 'hand_strength' and 'draws' lists of category names
+            e.g., {'hand_strength': ['nothing', 'king_high', 'ace_high', ...],
+                   'draws': ['no_draw', '4out_straight_draw', ...]}
+        """
+        response = self._send_command("show_category_names")
+
+        result = {'hand_strength': [], 'draws': []}
+        if len(response) >= 1:
+            result['hand_strength'] = response[0].strip().split()
+        if len(response) >= 2:
+            result['draws'] = response[1].strip().split()
+
+        return result
+
+    def show_categories(self, board: str) -> Dict[str, List[int]]:
+        """
+        Get category indices for all 1326 hands on a given board.
+
+        Args:
+            board: Board cards without spaces (e.g., 'Qc8c7d')
+
+        Returns:
+            Dict with 'hand_strength' and 'draws' lists of 1326 integers each
+            Integers correspond to indices in show_category_names() result
+        """
+        # UPI 2.0 requires board without spaces
+        board_no_spaces = board.replace(' ', '')
+        response = self._send_command(f"show_categories {board_no_spaces}")
+
+        result = {'hand_strength': [], 'draws': []}
+        if len(response) >= 1:
+            try:
+                result['hand_strength'] = [int(x) for x in response[0].strip().split()]
+            except ValueError:
+                pass
+        if len(response) >= 2:
+            try:
+                result['draws'] = [int(x) for x in response[1].strip().split()]
+            except ValueError:
+                pass
+
+        return result
+
     def get_hand_index(self, hand: str) -> int:
         """
         Get the index in 1326-hand array for the given hand.

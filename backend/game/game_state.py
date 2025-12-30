@@ -872,6 +872,107 @@ class GameState:
             traceback.print_exc()
             return self.last_villain_strategy  # Return cached version on error
 
+    def _get_range_composition(self) -> Optional[Dict[str, Any]]:
+        """
+        Calculate range composition breakdown for villain's current range.
+        Uses PioSolver's hand strength categories (like Flopzilla) for postflop.
+        """
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        try:
+            # Determine villain's position
+            player = self.get_player_to_act()
+            if not player or player.is_human:
+                # Use cached composition if it's hero's turn
+                return getattr(self, 'last_range_composition', None)
+
+            node_info = self.pio_connection.show_node(self.pio_node)
+            node_type = node_info.get('node_type', '')
+            pio_player = 'OOP' if 'OOP' in node_type else 'IP'
+
+            # Get range weights
+            range_weights = self.pio_connection.show_range(pio_player, self.pio_node)
+            if len(range_weights) != 1326:
+                return None
+
+            hand_order = self.pio_connection.hand_order
+            if len(hand_order) != 1326:
+                return None
+
+            # Get PioSolver hand categories for this board
+            board_str = ''.join(str(c) for c in self.community_cards)
+            category_names = self.pio_connection.show_category_names()
+            category_indices = self.pio_connection.show_categories(board_str)
+
+            hand_strength_names = category_names.get('hand_strength', [])
+            draw_names = category_names.get('draws', [])
+            hand_strength_indices = category_indices.get('hand_strength', [])
+            draw_indices = category_indices.get('draws', [])
+
+            if len(hand_strength_indices) != 1326 or len(draw_indices) != 1326:
+                print(f"[GameState] Invalid category data: hs={len(hand_strength_indices)}, draws={len(draw_indices)}", flush=True)
+                return getattr(self, 'last_range_composition', None)
+
+            # Aggregate weights by hand strength category
+            hs_weights = {}
+            draw_weights = {}
+            total_weight = 0.0
+
+            for i in range(1326):
+                weight = range_weights[i] if i < len(range_weights) else 0
+                if weight <= 0:
+                    continue
+
+                total_weight += weight
+
+                # Hand strength category
+                hs_idx = hand_strength_indices[i]
+                if 0 <= hs_idx < len(hand_strength_names):
+                    hs_name = hand_strength_names[hs_idx]
+                    hs_weights[hs_name] = hs_weights.get(hs_name, 0.0) + weight
+
+                # Draw category
+                draw_idx = draw_indices[i]
+                if 0 <= draw_idx < len(draw_names):
+                    draw_name = draw_names[draw_idx]
+                    draw_weights[draw_name] = draw_weights.get(draw_name, 0.0) + weight
+
+            # Calculate percentages for hand strength
+            hand_strength = {}
+            if total_weight > 0:
+                for name, weight in hs_weights.items():
+                    if weight > 0:
+                        hand_strength[name] = {
+                            'percent': round((weight / total_weight) * 100, 1),
+                            'combos': round(weight, 1)
+                        }
+
+            # Calculate percentages for draws
+            draws = {}
+            if total_weight > 0:
+                for name, weight in draw_weights.items():
+                    if weight > 0:
+                        draws[name] = {
+                            'percent': round((weight / total_weight) * 100, 1),
+                            'combos': round(weight, 1)
+                        }
+
+            result = {
+                'hand_strength': hand_strength,
+                'draws': draws,
+                'total_combos': round(total_weight, 1)
+            }
+
+            self.last_range_composition = result
+            return result
+
+        except Exception as e:
+            print(f"[GameState] Error getting range composition: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return getattr(self, 'last_range_composition', None)
+
     def _get_hand_strategy(self, hole_cards, pio_position: str) -> Optional[Dict[str, float]]:
         """
         Get strategy frequencies for a specific hand at the current node.
@@ -1060,5 +1161,6 @@ class GameState:
             'pio_node': self.pio_node,
             'villain_strategy': self._get_villain_strategy(),
             'pio_actions': self._get_pio_actions(),
-            'strategy_history': self.strategy_history
+            'strategy_history': self.strategy_history,
+            'range_composition': self._get_range_composition()
         }

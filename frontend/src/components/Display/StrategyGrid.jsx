@@ -118,7 +118,121 @@ const getActionSymbol = (actionRecord) => {
   return action;
 };
 
-function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null, onSelectIndex }) {
+// PioSolver hand strength categories (best to worst)
+const HAND_STRENGTH_CONFIG = {
+  straight_flush: { label: 'Str Flush', color: '#9b59b6', order: 0 },
+  quads: { label: 'Quads', color: '#8e44ad', order: 1 },
+  top_fullhouse: { label: 'Top FH', color: '#e74c3c', order: 2 },
+  full_house: { label: 'Full House', color: '#c0392b', order: 3 },
+  flush: { label: 'Flush', color: '#3498db', order: 4 },
+  straight: { label: 'Straight', color: '#2980b9', order: 5 },
+  trips: { label: 'Trips', color: '#27ae60', order: 6 },
+  weak_trips: { label: 'Weak Trips', color: '#2ecc71', order: 7 },
+  two_pair: { label: 'Two Pair', color: '#f39c12', order: 8 },
+  low_two_pair: { label: 'Low 2P', color: '#e67e22', order: 9 },
+  overpair: { label: 'Overpair', color: '#d35400', order: 10 },
+  top_pair: { label: 'Top Pair', color: '#e74c3c', order: 11 },
+  pp_above_tp: { label: 'PP > TP', color: '#c0392b', order: 12 },
+  pp_below_tp: { label: 'PP < TP', color: '#95a5a6', order: 13 },
+  middle_pair: { label: 'Mid Pair', color: '#7f8c8d', order: 14 },
+  weak_pair: { label: 'Weak Pair', color: '#6c7a89', order: 15 },
+  ace_high: { label: 'Ace High', color: '#5d6d7e', order: 16 },
+  king_high: { label: 'King High', color: '#4d5656', order: 17 },
+  nothing: { label: 'Nothing', color: '#34495e', order: 18 },
+};
+
+// PioSolver draw categories
+const DRAW_CONFIG = {
+  combo_draw: { label: 'Combo Draw', color: '#9b59b6', order: 0 },
+  flush_draw: { label: 'Flush Draw', color: '#3498db', order: 1 },
+  '8out_straight_draw': { label: 'OESD', color: '#27ae60', order: 2 },
+  '4out_straight_draw': { label: 'Gutshot', color: '#2ecc71', order: 3 },
+  no_draw: { label: 'No Draw', color: '#7f8c8d', order: 4 },
+};
+
+// Range Composition display component
+function RangeComposition({ composition }) {
+  if (!composition) return null;
+
+  const { hand_strength, draws, total_combos } = composition;
+
+  // Check if we have the new format (hand_strength/draws)
+  const hasNewFormat = hand_strength || draws;
+  if (!hasNewFormat) return null;
+
+  // Sort hand strength categories by order (strongest first)
+  const sortedHandStrength = Object.entries(hand_strength || {})
+    .filter(([_, val]) => val.percent > 0.5)  // Only show categories with >0.5%
+    .sort((a, b) => {
+      const orderA = HAND_STRENGTH_CONFIG[a[0]]?.order ?? 99;
+      const orderB = HAND_STRENGTH_CONFIG[b[0]]?.order ?? 99;
+      return orderA - orderB;
+    });
+
+  // Sort draw categories by order (strongest first)
+  const sortedDraws = Object.entries(draws || {})
+    .filter(([name, val]) => val.percent > 0.5 && name !== 'no_draw')  // Hide no_draw
+    .sort((a, b) => {
+      const orderA = DRAW_CONFIG[a[0]]?.order ?? 99;
+      const orderB = DRAW_CONFIG[b[0]]?.order ?? 99;
+      return orderA - orderB;
+    });
+
+  return (
+    <div className="range-composition">
+      <div className="composition-header">
+        <span>Range Breakdown</span>
+        <span className="total-combos">{total_combos} combos</span>
+      </div>
+
+      {/* Hand Strength Section */}
+      {sortedHandStrength.length > 0 && (
+        <div className="composition-section">
+          <div className="section-label">Made Hands</div>
+          {sortedHandStrength.map(([category, val]) => {
+            const config = HAND_STRENGTH_CONFIG[category] || { label: category, color: '#95a5a6' };
+            return (
+              <div key={category} className="composition-row">
+                <span className="cat-label">{config.label}</span>
+                <div className="bar-container">
+                  <div
+                    className="bar-fill"
+                    style={{ width: `${val.percent}%`, backgroundColor: config.color }}
+                  />
+                </div>
+                <span className="cat-percent">{val.percent}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Draws Section */}
+      {sortedDraws.length > 0 && (
+        <div className="composition-section">
+          <div className="section-label">Draws</div>
+          {sortedDraws.map(([category, val]) => {
+            const config = DRAW_CONFIG[category] || { label: category, color: '#95a5a6' };
+            return (
+              <div key={category} className="composition-row">
+                <span className="cat-label">{config.label}</span>
+                <div className="bar-container">
+                  <div
+                    className="bar-fill"
+                    style={{ width: `${val.percent}%`, backgroundColor: config.color }}
+                  />
+                </div>
+                <span className="cat-percent">{val.percent}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null, onSelectIndex, rangeComposition }) {
   // Determine which strategy to display
   const displayStrategy = selectedIndex !== null && strategyHistory?.[selectedIndex]?.strategy
     ? strategyHistory[selectedIndex].strategy
@@ -288,6 +402,9 @@ function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null
           })}
         </div>
       )}
+
+      {/* Range Composition */}
+      <RangeComposition composition={rangeComposition} />
 
       <div className="grid-container">
         {grid.map((row, rowIdx) => (

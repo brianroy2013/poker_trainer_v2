@@ -188,6 +188,7 @@ function App() {
                 strategyHistory={gameState?.strategy_history}
                 selectedIndex={selectedStrategyIndex}
                 onSelectIndex={setSelectedStrategyIndex}
+                rangeComposition={gameState?.range_composition}
               />
             )}
           </div>

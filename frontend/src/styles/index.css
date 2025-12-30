@@ -999,6 +999,85 @@ body {
   border-radius: 2px;
 }
 
+/* Range Composition */
+.range-composition {
+  margin-bottom: 10px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.composition-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.composition-header .total-combos {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.composition-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.7rem;
+}
+
+.composition-row .cat-label {
+  width: 90px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composition-row .bar-container {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.composition-row .bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.composition-row .cat-percent {
+  width: 35px;
+  text-align: right;
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-light);
+}
+
+.composition-section {
+  margin-bottom: 8px;
+}
+
+.composition-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .strategy-grid-placeholder {
   padding: 20px;
   text-align: center;
