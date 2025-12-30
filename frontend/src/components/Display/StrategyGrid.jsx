@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
 
@@ -151,7 +151,7 @@ const DRAW_CONFIG = {
 };
 
 // Range Composition display component
-function RangeComposition({ composition }) {
+function RangeComposition({ composition, showCombos, onToggleShowCombos }) {
   if (!composition) return null;
 
   const { hand_strength, draws, total_combos } = composition;
@@ -178,12 +178,26 @@ function RangeComposition({ composition }) {
       return orderA - orderB;
     });
 
+  const formatValue = (val) => showCombos ? val.combos : `${val.percent}%`;
+
   return (
     <div className="range-composition">
       <div className="composition-header">
         <span>Range Breakdown</span>
-        <span className="total-combos">{total_combos} combos</span>
+        <div className="composition-toggle">
+          <span className={!showCombos ? 'active' : ''}>%</span>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={showCombos}
+              onChange={() => onToggleShowCombos?.(!showCombos)}
+            />
+            <span className="toggle-slider"></span>
+          </label>
+          <span className={showCombos ? 'active' : ''}>#</span>
+        </div>
       </div>
+      <div className="total-combos-row">{total_combos} combos total</div>
 
       {/* Hand Strength Section */}
       {sortedHandStrength.length > 0 && (
@@ -200,7 +214,7 @@ function RangeComposition({ composition }) {
                     style={{ width: `${val.percent}%`, backgroundColor: config.color }}
                   />
                 </div>
-                <span className="cat-percent">{val.percent}%</span>
+                <span className="cat-percent">{formatValue(val)}</span>
               </div>
             );
           })}
@@ -222,7 +236,7 @@ function RangeComposition({ composition }) {
                     style={{ width: `${val.percent}%`, backgroundColor: config.color }}
                   />
                 </div>
-                <span className="cat-percent">{val.percent}%</span>
+                <span className="cat-percent">{formatValue(val)}</span>
               </div>
             );
           })}
@@ -233,6 +247,8 @@ function RangeComposition({ composition }) {
 }
 
 function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null, onSelectIndex, rangeComposition }) {
+  const [showCombos, setShowCombos] = useState(false);
+
   // Determine which strategy to display
   const displayStrategy = selectedIndex !== null && strategyHistory?.[selectedIndex]?.strategy
     ? strategyHistory[selectedIndex].strategy
@@ -409,7 +425,7 @@ function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null
       )}
 
       {/* Range Composition */}
-      <RangeComposition composition={displayComposition} />
+      <RangeComposition composition={displayComposition} showCombos={showCombos} onToggleShowCombos={setShowCombos} />
 
       <div className="grid-container">
         {grid.map((row, rowIdx) => (
