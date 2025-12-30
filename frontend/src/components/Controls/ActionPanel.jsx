@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 export function ActionPanel({
   availableActions = [],
-  minRaise = 0,
-  maxRaise = 0,
+  pioActions = null,
   currentBet = 0,
   playerBet = 0,
   pot = 0,
@@ -11,24 +10,7 @@ export function ActionPanel({
   onAction,
   disabled = false
 }) {
-  const [raiseAmount, setRaiseAmount] = useState(minRaise);
-
   const toCall = currentBet - playerBet;
-  const canFold = availableActions.includes('fold');
-  const canCheck = availableActions.includes('check');
-  const canCall = availableActions.includes('call');
-  const canRaise = availableActions.includes('raise') && maxRaise > minRaise;
-
-  useEffect(() => {
-    setRaiseAmount(minRaise);
-  }, [minRaise]);
-
-  const handleRaiseChange = (e) => {
-    const value = parseInt(e.target.value, 10);
-    if (!isNaN(value)) {
-      setRaiseAmount(Math.max(minRaise, Math.min(maxRaise, value)));
-    }
-  };
 
   const handleAction = (action, amount = 0) => {
     if (disabled) return;
@@ -66,7 +48,72 @@ export function ActionPanel({
     );
   }
 
-  // Other streets: normal options
+  // Post-flop with PioSolver actions: show specific strategy options
+  if (pioActions && pioActions.length > 0) {
+    return (
+      <div className="action-buttons">
+        {pioActions.map((action, index) => {
+          if (action.type === 'fold') {
+            return (
+              <button
+                key={index}
+                className="action-btn fold"
+                onClick={() => handleAction('fold')}
+                disabled={disabled}
+              >
+                Fold
+              </button>
+            );
+          }
+          if (action.type === 'check') {
+            return (
+              <button
+                key={index}
+                className="action-btn check-call"
+                onClick={() => handleAction('check')}
+                disabled={disabled}
+              >
+                Check
+              </button>
+            );
+          }
+          if (action.type === 'call') {
+            return (
+              <button
+                key={index}
+                className="action-btn check-call"
+                onClick={() => handleAction('call')}
+                disabled={disabled}
+              >
+                Call {toCall}
+              </button>
+            );
+          }
+          if (action.type === 'raise' && action.amount) {
+            const betLabel = action.amount <= pot * 0.4 ? 'Small' :
+                            action.amount <= pot * 0.8 ? 'Medium' : 'Large';
+            return (
+              <button
+                key={index}
+                className="action-btn raise"
+                onClick={() => handleAction('raise', action.amount)}
+                disabled={disabled}
+              >
+                Bet {action.amount}
+              </button>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
+  }
+
+  // Fallback to standard actions
+  const canFold = availableActions.includes('fold');
+  const canCheck = availableActions.includes('check');
+  const canCall = availableActions.includes('call');
+
   return (
     <div className="action-buttons">
       {canFold && (
@@ -97,27 +144,6 @@ export function ActionPanel({
         >
           Call {toCall}
         </button>
-      )}
-
-      {canRaise && (
-        <div className="raise-input">
-          <input
-            type="number"
-            min={minRaise}
-            max={maxRaise}
-            value={raiseAmount}
-            onChange={handleRaiseChange}
-            placeholder={minRaise.toString()}
-            disabled={disabled}
-          />
-          <button
-            className="action-btn raise"
-            onClick={() => handleAction('raise', raiseAmount)}
-            disabled={disabled}
-          >
-            Raise
-          </button>
-        </div>
       )}
     </div>
   );

@@ -111,8 +111,7 @@ function App() {
           ) : isHumanTurn && heroCanAct ? (
             <ActionPanel
               availableActions={gameState?.available_actions || []}
-              minRaise={gameState?.min_raise || 0}
-              maxRaise={gameState?.max_raise || 0}
+              pioActions={gameState?.pio_actions}
               currentBet={gameState?.current_bet || 0}
               playerBet={gameState?.players[gameState?.action_on]?.current_bet || 0}
               pot={gameState?.pot || 0}

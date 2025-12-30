@@ -515,6 +515,53 @@ class GameState:
             river_card = str(self.community_cards[4])
             self.pio_node = f"{self.pio_node}:{river_card}"
 
+    def _get_pio_actions(self) -> Optional[List[Dict]]:
+        """
+        Get available actions from PioSolver tree at current node.
+
+        Returns:
+            List of action dicts with 'type' and optionally 'amount' for bets/raises
+            e.g., [{'type': 'check'}, {'type': 'raise', 'amount': 21}, {'type': 'raise', 'amount': 42}]
+        """
+        # Only use PioSolver actions from flop onwards
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        try:
+            children = self.pio_connection.show_children(self.pio_node)
+            if not children:
+                return None
+
+            player = self.get_player_to_act()
+            if not player:
+                return None
+
+            actions = []
+            for child in children:
+                pio_action = child['action']
+
+                if pio_action == 'f':
+                    actions.append({'type': 'fold'})
+                elif pio_action == 'c':
+                    # Check or call depending on current bet
+                    if self.current_bet == player.current_bet:
+                        actions.append({'type': 'check'})
+                    else:
+                        actions.append({'type': 'call'})
+                elif pio_action.startswith('b'):
+                    # Bet/raise with specific amount
+                    try:
+                        amount = int(pio_action[1:])
+                        actions.append({'type': 'raise', 'amount': amount})
+                    except ValueError:
+                        continue
+
+            return actions if actions else None
+
+        except Exception as e:
+            print(f"[GameState] Error getting PioSolver actions: {e}", flush=True)
+            return None
+
     def _get_villain_strategy(self) -> Optional[Dict]:
         """Get villain's strategy at this node for display."""
         # Only show strategy from flop onwards (PioSolver trees start at flop)
@@ -664,5 +711,6 @@ class GameState:
             'action_history': self.action_history,
             'pio_file': self.pio_file,
             'pio_node': self.pio_node,
-            'villain_strategy': self._get_villain_strategy()
+            'villain_strategy': self._get_villain_strategy(),
+            'pio_actions': self._get_pio_actions()
         }
