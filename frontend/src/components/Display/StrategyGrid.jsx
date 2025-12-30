@@ -106,14 +106,15 @@ function StrategyGrid({ strategyData }) {
     }
 
     // Get action colors for the in-range portion
-    // Order: call/check, bets (smallest to largest), fold
+    // Order: bets (largest to smallest), call/check, fold
     const getActionOrder = (action) => {
-      if (action === 'c') return 0;  // Call/check first
-      if (action === 'f') return 1000;  // Fold last
       if (action.startsWith('b')) {
-        return 1 + (parseInt(action.substring(1)) || 0);  // Bets in between, sorted by size
+        // Negative size so larger bets sort first
+        return -(parseInt(action.substring(1)) || 0);
       }
-      return 500;  // Unknown actions
+      if (action === 'c') return 1000;  // Call/check after bets
+      if (action === 'f') return 2000;  // Fold last
+      return 1500;  // Unknown actions
     };
 
     const sortedActions = Object.entries(cellActions || {})

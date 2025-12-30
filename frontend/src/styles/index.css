@@ -456,30 +456,30 @@ body {
 }
 
 .action-btn.fold {
-  background: #6b7280;
+  background: rgb(109, 162, 192);
   color: #fff;
 }
 
 .action-btn.fold:hover:not(:disabled) {
-  background: #4b5563;
+  background: rgb(89, 142, 172);
 }
 
 .action-btn.check-call {
-  background: var(--chip-blue);
+  background: rgb(143, 188, 139);
   color: #fff;
 }
 
 .action-btn.check-call:hover:not(:disabled) {
-  background: #1565c0;
+  background: rgb(123, 168, 119);
 }
 
 .action-btn.raise {
-  background: var(--chip-green);
+  background: rgb(205, 120, 97);
   color: #fff;
 }
 
 .action-btn.raise:hover:not(:disabled) {
-  background: #2e7d32;
+  background: rgb(177, 91, 74);
 }
 
 .raise-input {
