@@ -1084,6 +1084,64 @@ class GameState:
             print(f"[GameState] Error getting combo frequency: {e}", flush=True)
             return None
 
+    def _get_hero_equity_vs_range(self) -> Optional[Dict[str, Any]]:
+        """
+        Get hero's equity and EV vs villain's range using PioSolver's built-in calculation.
+
+        Returns:
+            Dict with 'equity_pct', 'ev', 'matchups' (combos in villain's range)
+
+        TODO: Investigate EV discrepancy - PioSolver viewer shows different EV (e.g. 20.45)
+        than calc_ev returns (e.g. -0.55) for the same hand/node. Possible causes:
+        - Viewer may show root node EV vs current node EV
+        - Different normalization or units
+        - Viewer may show a different metric entirely
+        Currently using calc_ev at current pio_node which returns -0.55 for KsQd at r:0:c:b21:b73
+        """
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        if len(self.community_cards) < 3:
+            return None
+
+        # Get hero's hole cards
+        hero = self.players.get(self.human_position)
+        if not hero or not hero.hole_cards or len(hero.hole_cards) < 2:
+            return None
+
+        try:
+            # Build hero's hand string (e.g., "AsKd")
+            hero_hand = ''.join(str(card) for card in hero.hole_cards)
+
+            # Determine hero's PioSolver position
+            hero_pio_pos = 'IP' if self.human_position == 'BTN' else 'OOP'
+
+            # Get equity and EV from PioSolver
+            equity_data = self.pio_connection.get_hand_equity(hero_hand, hero_pio_pos, self.pio_node)
+
+            if not equity_data:
+                return None
+
+            result = {}
+
+            if 'equity' in equity_data:
+                # PioSolver returns equity as 0-1, convert to percentage
+                result['equity_pct'] = round(equity_data['equity'] * 100, 1)
+
+            if 'ev' in equity_data:
+                result['ev'] = round(equity_data['ev'], 1)
+
+            if 'matchups' in equity_data:
+                result['matchups'] = round(equity_data['matchups'], 2)
+
+            return result if result else None
+
+        except Exception as e:
+            print(f"[GameState] Error getting equity from PioSolver: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return None
+
     def get_stats(self) -> Dict[str, Any]:
         player = self.get_player_to_act()
         if not player:
@@ -1167,5 +1225,6 @@ class GameState:
             'villain_strategy': self._get_villain_strategy(),
             'pio_actions': self._get_pio_actions(),
             'strategy_history': self.strategy_history,
-            'range_composition': self._get_range_composition()
+            'range_composition': self._get_range_composition(),
+            'hero_equity': self._get_hero_equity_vs_range()
         }

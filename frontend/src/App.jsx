@@ -239,6 +239,20 @@ function App() {
                   <span className="no-strategy">—</span>
                 )}
               </div>
+              {gameState?.hero_equity && (
+                <div className="strategy-row equity-row">
+                  <span className="strategy-label">vs Range:</span>
+                  <div className="equity-data">
+                    <span className="equity-pct">{gameState.hero_equity.equity_pct}% equity</span>
+                    {gameState.hero_equity.ev !== undefined && (
+                      <span className="equity-ev">EV: {gameState.hero_equity.ev}</span>
+                    )}
+                    {gameState.hero_equity.matchups !== undefined && (
+                      <span className="equity-matchups">({gameState.hero_equity.matchups} matchups)</span>
+                    )}
+                  </div>
+                </div>
+              )}
               {gameState?.pio_node && gameState?.street !== 'preflop' && (
                 <div className="strategy-row">
                   <span className="strategy-label">Node:</span>

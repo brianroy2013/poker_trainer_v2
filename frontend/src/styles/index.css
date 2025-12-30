@@ -1361,3 +1361,37 @@ body {
   padding: 2px 6px;
   border-radius: 3px;
 }
+
+/* Equity display */
+.equity-row {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.equity-data {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.equity-pct {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #55ee77;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.equity-ev {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ffcc44;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.equity-matchups {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}

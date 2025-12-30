@@ -263,6 +263,102 @@ class PioSolverConnection:
             return self.hand_order.index(reversed_hand)
         return -1
 
+    def calc_eq_node(self, player: str, node_id: str = "r") -> Dict[str, any]:
+        """
+        Calculate equity for a player at a specific node.
+
+        Args:
+            player: 'OOP' or 'IP'
+            node_id: Node identifier
+
+        Returns:
+            Dict with 'equity' (1326 floats), 'matchups' (1326 floats), 'average_equity' (float)
+        """
+        response = self._send_command(f"calc_eq_node {player} {node_id}")
+
+        result = {'equity': [], 'matchups': [], 'average_equity': 0.0}
+
+        if len(response) >= 1:
+            try:
+                result['equity'] = [float(v) for v in response[0].strip().split()]
+            except ValueError:
+                pass
+
+        if len(response) >= 2:
+            try:
+                result['matchups'] = [float(v) for v in response[1].strip().split()]
+            except ValueError:
+                pass
+
+        if len(response) >= 3:
+            try:
+                # Third line has EQ and matchups totals
+                values = response[2].strip().split()
+                if len(values) >= 1:
+                    result['average_equity'] = float(values[0])
+            except ValueError:
+                pass
+
+        return result
+
+    def calc_ev(self, player: str, node_id: str = "r") -> Dict[str, any]:
+        """
+        Calculate EV for a player at a specific node.
+
+        Args:
+            player: 'OOP' or 'IP'
+            node_id: Node identifier
+
+        Returns:
+            Dict with 'ev' (1326 floats) and 'matchups' (1326 floats)
+        """
+        response = self._send_command(f"calc_ev {player} {node_id}")
+
+        result = {'ev': [], 'matchups': []}
+
+        if len(response) >= 1:
+            try:
+                result['ev'] = [float(v) for v in response[0].strip().split()]
+            except ValueError:
+                pass
+
+        if len(response) >= 2:
+            try:
+                result['matchups'] = [float(v) for v in response[1].strip().split()]
+            except ValueError:
+                pass
+
+        return result
+
+    def get_hand_equity(self, hand: str, player: str, node_id: str = "r") -> Optional[Dict]:
+        """
+        Get equity and EV for a specific hand at a node.
+
+        Args:
+            hand: Hand string like 'AsKd'
+            player: 'OOP' or 'IP'
+            node_id: Node identifier
+
+        Returns:
+            Dict with 'equity' (0-1), 'ev' (chips), or None if hand not found
+        """
+        hand_idx = self.get_hand_index(hand)
+        if hand_idx == -1:
+            return None
+
+        eq_data = self.calc_eq_node(player, node_id)
+        ev_data = self.calc_ev(player, node_id)
+
+        result = {}
+        if eq_data['equity'] and hand_idx < len(eq_data['equity']):
+            result['equity'] = eq_data['equity'][hand_idx]
+            result['matchups'] = eq_data['matchups'][hand_idx] if eq_data['matchups'] else 0
+
+        if ev_data['ev'] and hand_idx < len(ev_data['ev']):
+            result['ev'] = ev_data['ev'][hand_idx]
+
+        return result if result else None
+
     def get_hands_with_frequencies(self, player: str, node_id: str = "r", board_cards: List[str] = None) -> List[Tuple[str, float]]:
         """
         Get all hands with their frequencies for a player.
