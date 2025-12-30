@@ -164,12 +164,6 @@ export default function PokerTable({ gameState, onHeroCanAct, onComputerAction, 
     <div className="poker-table">
       {/* Board area with community cards and pot */}
       <div className="board-area">
-        {/* Game tree node display */}
-        {gameState.pio_node && street !== 'preflop' && (
-          <div className="pio-node-display">
-            {gameState.pio_node}
-          </div>
-        )}
         <div className="board-cards">
           {board.length > 0 ? (
             board.map((card, i) => (

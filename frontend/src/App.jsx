@@ -238,6 +238,12 @@ function App() {
                   <span className="no-strategy">—</span>
                 )}
               </div>
+              {gameState?.pio_node && gameState?.street !== 'preflop' && (
+                <div className="strategy-row">
+                  <span className="strategy-label">Node:</span>
+                  <span className="pio-node-text">{gameState.pio_node}</span>
+                </div>
+              )}
             </div>}
           </div>
         </div>
