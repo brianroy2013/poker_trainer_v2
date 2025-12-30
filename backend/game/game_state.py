@@ -138,6 +138,7 @@ class GameState:
         self.last_villain_strategy: Optional[Dict] = None  # Cache last villain strategy for display
         self.player_hand_strategies: Dict[str, Dict] = {}  # Cache hand strategy per position
         self.player_combo_frequencies: Dict[str, float] = {}  # Cache combo frequency per position
+        self.strategy_history: List[Dict[str, Any]] = []  # History of villain strategies with actions
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -162,6 +163,7 @@ class GameState:
         self.last_villain_strategy = None  # Reset cached strategy
         self.player_hand_strategies = {}  # Reset hand strategy cache
         self.player_combo_frequencies = {}  # Reset combo frequency cache
+        self.strategy_history = []  # Reset strategy history
 
         # Initialize available cards with all 52 cards
         self.available_cards = {f"{r}{s}" for r in RANKS for s in SUITS}
@@ -422,6 +424,10 @@ class GameState:
             'bet_being_raised': bet_being_raised
         }
         self.action_history.append(action_record)
+
+        # Tag the last strategy history entry with this action (for villain actions)
+        if not player.is_human and self.strategy_history and self.strategy_history[-1]['action'] is None:
+            self.strategy_history[-1]['action'] = action_record
 
         if action == 'fold':
             player.folded = True
@@ -849,6 +855,15 @@ class GameState:
                 'pot': total_pot,
                 'current_bet': self.current_bet  # For bet vs raise distinction
             }
+
+            # Save to strategy history (will be tagged with action after villain acts)
+            self.strategy_history.append({
+                'strategy': self.last_villain_strategy,
+                'street': self.street,
+                'node': self.pio_node,
+                'action': None  # Will be filled in after villain acts
+            })
+
             return self.last_villain_strategy
 
         except Exception as e:
@@ -1044,5 +1059,6 @@ class GameState:
             'pio_file': self.pio_file,
             'pio_node': self.pio_node,
             'villain_strategy': self._get_villain_strategy(),
-            'pio_actions': self._get_pio_actions()
+            'pio_actions': self._get_pio_actions(),
+            'strategy_history': self.strategy_history
         }

@@ -82,8 +82,49 @@ const getActionLabel = (action, isCheck = true, pot = 0, currentBet = 0, actualA
   return action;
 };
 
-function StrategyGrid({ strategyData }) {
-  if (!strategyData || !strategyData.grid) {
+// Format action for display (similar to Seat.jsx getActionSymbol)
+const BIG_BLIND = 5;
+const getActionSymbol = (actionRecord) => {
+  if (!actionRecord) return '?';
+  const { action, amount, call_amount, pot_before_bet, bet_being_raised, street } = actionRecord;
+
+  if (action === 'fold') return 'F';
+  if (action === 'check') return 'X';
+  if (action === 'call') {
+    if (street === 'preflop') {
+      const bb = call_amount / BIG_BLIND;
+      return `C ${bb % 1 === 0 ? bb : bb.toFixed(1)}BB`;
+    }
+    const pct = pot_before_bet > 0 ? Math.round((call_amount / pot_before_bet) * 100) : 0;
+    return `C ${pct}%`;
+  }
+  if (action === 'bet') {
+    const pct = pot_before_bet > 0 ? Math.round((amount / pot_before_bet) * 100) : 0;
+    return `B ${pct}%`;
+  }
+  if (action === 'raise') {
+    if (street === 'preflop') {
+      const bb = Math.round(amount / BIG_BLIND);
+      return `R ${bb}BB`;
+    }
+    if (bet_being_raised && bet_being_raised > 0) {
+      const mult = amount / bet_being_raised;
+      return `R ${mult % 1 === 0 ? mult : mult.toFixed(1)}x`;
+    }
+    const pct = pot_before_bet > 0 ? Math.round((amount / pot_before_bet) * 100) : 0;
+    return `R ${pct}%`;
+  }
+  if (action === 'allin') return 'A';
+  return action;
+};
+
+function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null, onSelectIndex }) {
+  // Determine which strategy to display
+  const displayStrategy = selectedIndex !== null && strategyHistory?.[selectedIndex]?.strategy
+    ? strategyHistory[selectedIndex].strategy
+    : strategyData;
+
+  if (!displayStrategy || !displayStrategy.grid) {
     return (
       <div className="strategy-grid-placeholder">
         <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
@@ -93,7 +134,7 @@ function StrategyGrid({ strategyData }) {
     );
   }
 
-  const { grid, actions, is_check, pot, current_bet } = strategyData;
+  const { grid, actions, is_check, pot, current_bet } = displayStrategy;
   const isCheck = is_check !== false; // Default to true if not specified
   const potValue = pot || 0;
   const currentBet = current_bet || 0;
@@ -203,8 +244,51 @@ function StrategyGrid({ strategyData }) {
     return `${handLabel}\n${parts.join('\n')}`;
   };
 
+  // Filter strategy history to only show entries with actions (villain has acted)
+  const completedHistory = strategyHistory.filter(entry => entry.action !== null);
+
+  // Group actions by street
+  const groupedByStreet = completedHistory.reduce((acc, entry, index) => {
+    const street = entry.street || 'flop';
+    if (!acc[street]) acc[street] = [];
+    acc[street].push({ entry, index });
+    return acc;
+  }, {});
+
+  const streetOrder = ['flop', 'turn', 'river'];
+  const streetLabels = { flop: 'F:', turn: 'T:', river: 'R:' };
+
   return (
     <div className="strategy-grid">
+      {/* Action History */}
+      {completedHistory.length > 0 && (
+        <div className="strategy-action-history">
+          {streetOrder.map(street => {
+            const streetActions = groupedByStreet[street];
+            if (!streetActions || streetActions.length === 0) return null;
+            return (
+              <div key={street} className="action-street">
+                <span className="street-label">{streetLabels[street]}</span>
+                {streetActions.map(({ entry, index }) => {
+                  const originalIndex = strategyHistory.findIndex(e => e === entry);
+                  const isSelected = selectedIndex === originalIndex;
+                  return (
+                    <span
+                      key={index}
+                      className={`action-symbol action-${entry.action?.action} ${isSelected ? 'selected' : ''}`}
+                      onClick={() => onSelectIndex?.(isSelected ? null : originalIndex)}
+                      title={`${entry.street}: ${entry.node}`}
+                    >
+                      {getActionSymbol(entry.action)}
+                    </span>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div className="grid-container">
         {grid.map((row, rowIdx) => (
           <div key={rowIdx} className="grid-row">

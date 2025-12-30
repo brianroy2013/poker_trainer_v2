@@ -1082,6 +1082,79 @@ body {
   margin-bottom: 0;
 }
 
+/* Strategy Action History (clickable action tracker in sidebar) */
+.strategy-action-history {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  font-family: Consolas, Monaco, monospace;
+}
+
+.strategy-action-history .action-street {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.strategy-action-history .street-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-right: 2px;
+}
+
+.strategy-action-history .action-symbol {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: #fff;
+  transition: transform 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+
+.strategy-action-history .action-symbol:hover {
+  transform: scale(1.1);
+}
+
+.strategy-action-history .action-symbol.selected {
+  box-shadow: 0 0 0 2px var(--gold);
+}
+
+.strategy-action-history .action-fold {
+  background-color: rgb(109, 162, 192);
+}
+
+.strategy-action-history .action-check {
+  background-color: rgb(143, 188, 139);
+}
+
+.strategy-action-history .action-call {
+  background-color: rgb(143, 188, 139);
+}
+
+.strategy-action-history .action-bet {
+  background-color: rgb(233, 150, 122);
+}
+
+.strategy-action-history .action-raise {
+  background-color: rgb(177, 91, 74);
+}
+
+.strategy-action-history .action-allin {
+  background-color: #a855f7;
+}
+
 .hand-strategies {
   display: flex;
   flex-direction: column;

@@ -69,16 +69,19 @@ function App() {
   const [heroCanAct, setHeroCanAct] = useState(false);
   const [strategyCollapsed, setStrategyCollapsed] = useState(true);
   const [testingCollapsed, setTestingCollapsed] = useState(true);
+  const [selectedStrategyIndex, setSelectedStrategyIndex] = useState(null);
 
   const handleStartGame = async (config) => {
     setGameConfig(config);
     setShowSetup(false);
+    setSelectedStrategyIndex(null);
     await startNewGame(config.hero_position, config.villain_position);
   };
 
   const handleNewHand = async () => {
     if (gameConfig) {
       setHandNumber(prev => prev + 1);
+      setSelectedStrategyIndex(null);
       await startNewGame(gameConfig.hero_position, gameConfig.villain_position);
     }
   };
@@ -179,7 +182,14 @@ function App() {
               <span className="collapse-icon">{strategyCollapsed ? '▶' : '▼'}</span>
               {gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy
             </h3>
-            {!strategyCollapsed && <StrategyGrid strategyData={gameState?.villain_strategy} />}
+            {!strategyCollapsed && (
+              <StrategyGrid
+                strategyData={gameState?.villain_strategy}
+                strategyHistory={gameState?.strategy_history}
+                selectedIndex={selectedStrategyIndex}
+                onSelectIndex={setSelectedStrategyIndex}
+              />
+            )}
           </div>
 
           <div className={`testing-panel collapsible ${testingCollapsed ? 'collapsed' : ''}`}>
