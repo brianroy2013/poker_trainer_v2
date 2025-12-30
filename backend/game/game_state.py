@@ -857,11 +857,14 @@ class GameState:
             }
 
             # Save to strategy history (will be tagged with action after villain acts)
+            # Also save range composition for historical lookup
+            range_comp = self._get_range_composition()
             self.strategy_history.append({
                 'strategy': self.last_villain_strategy,
                 'street': self.street,
                 'node': self.pio_node,
-                'action': None  # Will be filled in after villain acts
+                'action': None,  # Will be filled in after villain acts
+                'range_composition': range_comp
             })
 
             return self.last_villain_strategy

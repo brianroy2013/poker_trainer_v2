@@ -238,6 +238,11 @@ function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null
     ? strategyHistory[selectedIndex].strategy
     : strategyData;
 
+  // Determine which range composition to display
+  const displayComposition = selectedIndex !== null && strategyHistory?.[selectedIndex]?.range_composition
+    ? strategyHistory[selectedIndex].range_composition
+    : rangeComposition;
+
   if (!displayStrategy || !displayStrategy.grid) {
     return (
       <div className="strategy-grid-placeholder">
@@ -404,7 +409,7 @@ function StrategyGrid({ strategyData, strategyHistory = [], selectedIndex = null
       )}
 
       {/* Range Composition */}
-      <RangeComposition composition={rangeComposition} />
+      <RangeComposition composition={displayComposition} />
 
       <div className="grid-container">
         {grid.map((row, rowIdx) => (
