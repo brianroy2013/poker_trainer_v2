@@ -603,15 +603,58 @@ class GameState:
 
             # Build 13x13 strategy grid for each action
             RANKS_ORDER = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+            SUITS = ['s', 'h', 'd', 'c']
 
-            # Total combos per hand class: pairs=6, suited=4, offsuit=12
+            # Build set of known cards (board + hero's hole cards) for blocker calculations
+            known_cards = set()
+            for card in self.community_cards:
+                card_str = str(card)
+                if len(card_str) >= 2:
+                    known_cards.add(card_str)
+            # Add hero's hole cards
+            hero = self.players.get(self.human_position)
+            if hero and hero.hole_cards:
+                for card in hero.hole_cards:
+                    card_str = str(card)
+                    if len(card_str) >= 2:
+                        known_cards.add(card_str)
+
+            # Calculate max combos accounting for known card blockers
             def get_max_combos(row, col):
-                if row == col:
-                    return 6  # Pairs
-                elif row < col:
-                    return 4  # Suited (above diagonal)
-                else:
-                    return 12  # Offsuit (below diagonal)
+                rank1 = RANKS_ORDER[row]
+                rank2 = RANKS_ORDER[col]
+
+                if row == col:  # Pairs
+                    # Count how many of this rank are in known cards
+                    blocked_count = sum(1 for card in known_cards if card[0] == rank1)
+                    available = 4 - blocked_count
+                    # C(n, 2) = n * (n-1) / 2
+                    if available < 2:
+                        return 0
+                    return available * (available - 1) // 2
+
+                elif row < col:  # Suited (above diagonal)
+                    # Count how many suited combos are blocked
+                    blocked = 0
+                    for suit in SUITS:
+                        combo1 = f"{rank1}{suit}"
+                        combo2 = f"{rank2}{suit}"
+                        if combo1 in known_cards or combo2 in known_cards:
+                            blocked += 1
+                    return 4 - blocked
+
+                else:  # Offsuit (below diagonal)
+                    # Count non-blocked offsuit combos
+                    count = 0
+                    for suit1 in SUITS:
+                        for suit2 in SUITS:
+                            if suit1 == suit2:
+                                continue  # Skip suited
+                            combo1 = f"{rank1}{suit1}"
+                            combo2 = f"{rank2}{suit2}"
+                            if combo1 not in known_cards and combo2 not in known_cards:
+                                count += 1
+                    return count
 
             # For each cell, store range weight sum and action frequencies
             grid = [[None] * 13 for _ in range(13)]
@@ -658,7 +701,10 @@ class GameState:
             for row in range(13):
                 for col in range(13):
                     max_combos = get_max_combos(row, col)
-                    if grid[row][col] and grid[row][col]['range_sum'] > 0:
+                    if max_combos == 0:
+                        # No combos possible (blocked by board)
+                        grid[row][col] = {}
+                    elif grid[row][col] and grid[row][col]['range_sum'] > 0:
                         cell = grid[row][col]
                         # Normalize by max combos to get % of hand class
                         normalized = {}
