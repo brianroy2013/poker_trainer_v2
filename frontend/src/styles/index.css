@@ -924,3 +924,87 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Strategy Grid */
+.strategy-grid {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.grid-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.grid-row {
+  display: flex;
+  gap: 1px;
+}
+
+.grid-cell {
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  cursor: default;
+  transition: transform 0.1s;
+}
+
+.grid-cell:hover {
+  transform: scale(1.5);
+  z-index: 10;
+  position: relative;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.cell-label {
+  font-size: 0.45rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 600;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 1);
+}
+
+.strategy-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--text-light);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.strategy-grid-placeholder {
+  padding: 20px;
+  text-align: center;
+}
+
+/* PioSolver Node Display */
+.pio-node-display {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.75rem;
+  color: var(--gold);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
+}

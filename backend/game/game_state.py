@@ -4,7 +4,7 @@ import random
 from typing import Dict, List, Optional, Any, Tuple
 from .deck import Deck, Card, RANKS, SUITS
 from .actions import ActionValidator
-from .pio_solver import extract_oop_hands_to_file, extract_ip_hands_to_file
+from .pio_solver import extract_oop_hands_to_file, extract_ip_hands_to_file, PioSolverConnection
 
 POSITIONS = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB']
 
@@ -133,6 +133,8 @@ class GameState:
         self.pio_file: str = ''
         self.flop_cards: List[Card] = []
         self.available_cards: set = set()  # Tracks all available cards (52 - used cards)
+        self.pio_node: str = 'r:0'  # Current position in PioSolver game tree
+        self.pio_connection: Optional[PioSolverConnection] = None  # Reference to PioSolver
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -153,6 +155,7 @@ class GameState:
         self.human_position = hero_position
         self.villain_position = villain_position
         self.action_history = []
+        self.pio_node = 'r:0'  # Reset to root node
 
         # Initialize available cards with all 52 cards
         self.available_cards = {f"{r}{s}" for r in RANKS for s in SUITS}
@@ -314,8 +317,10 @@ class GameState:
                 self.community_cards = self.deck.deal(3)
         elif self.street == 'turn':
             self.community_cards.extend(self.deck.deal(1))
+            self._update_pio_node_for_street()
         elif self.street == 'river':
             self.community_cards.extend(self.deck.deal(1))
+            self._update_pio_node_for_street()
         elif self.street == 'showdown':
             self.resolve_showdown()
             return
@@ -364,6 +369,12 @@ class GameState:
 
         if action not in available:
             return {'success': False, 'error': f'Invalid action: {action}'}
+
+        # Update PioSolver node tracking (only from flop onwards - trees start at flop)
+        if self.street != 'preflop':
+            child_node = self._find_child_node(action, amount)
+            if child_node:
+                self.pio_node = child_node
 
         # Calculate call amount for recording
         call_amount = None
@@ -441,6 +452,161 @@ class GameState:
 
         return {'success': True}
 
+    def _find_child_node(self, action: str, amount: int = 0) -> Optional[str]:
+        """
+        Find the child node that matches the given action.
+
+        Args:
+            action: 'fold', 'check', 'call', or 'raise'
+            amount: Raise amount (for raise actions)
+
+        Returns:
+            Child node string, or None if no match found
+        """
+        if not self.pio_connection or not self.pio_node:
+            return None
+
+        try:
+            children = self.pio_connection.show_children(self.pio_node)
+            if not children:
+                return None
+
+            if action == 'fold':
+                for child in children:
+                    if child['action'] == 'f':
+                        return child['node_id']
+
+            elif action in ('check', 'call'):
+                for child in children:
+                    if child['action'] == 'c':
+                        return child['node_id']
+
+            elif action == 'raise':
+                # Find closest bet size match
+                bet_children = []
+                for child in children:
+                    if child['action'].startswith('b'):
+                        try:
+                            size = int(child['action'][1:])
+                            bet_children.append((size, child['node_id']))
+                        except ValueError:
+                            continue
+
+                if bet_children:
+                    # Find closest match to the actual bet amount
+                    bet_children.sort(key=lambda x: abs(x[0] - amount))
+                    return bet_children[0][1]
+
+        except Exception as e:
+            print(f"[GameState] Error finding child node: {e}", flush=True)
+
+        return None
+
+    def _update_pio_node_for_street(self):
+        """Update pio_node when advancing to a new street (add card to path)."""
+        if not self.pio_connection or not self.pio_node:
+            return
+
+        # Add the new card to the node path
+        if self.street == 'turn' and len(self.community_cards) >= 4:
+            turn_card = str(self.community_cards[3])
+            self.pio_node = f"{self.pio_node}:{turn_card}"
+        elif self.street == 'river' and len(self.community_cards) >= 5:
+            river_card = str(self.community_cards[4])
+            self.pio_node = f"{self.pio_node}:{river_card}"
+
+    def _get_villain_strategy(self) -> Optional[Dict]:
+        """Get villain's strategy at this node for display."""
+        # Only show strategy from flop onwards (PioSolver trees start at flop)
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        try:
+            # Get strategy at current node
+            strategy = self.pio_connection.show_strategy(self.pio_node)
+            if not strategy:
+                return None
+
+            hand_order = self.pio_connection.hand_order
+            if len(hand_order) != 1326:
+                return None
+
+            # Get the actions available at this node
+            actions = list(strategy.keys())
+            if not actions:
+                return None
+
+            # Build 13x13 strategy grid for each action
+            RANKS_ORDER = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+
+            # For each cell, store the dominant action and its frequency
+            grid = [[None] * 13 for _ in range(13)]
+
+            for i, hand in enumerate(hand_order):
+                if len(hand) != 4:
+                    continue
+
+                r1, s1, r2, s2 = hand[0], hand[1], hand[2], hand[3]
+                if r1 not in RANKS_ORDER or r2 not in RANKS_ORDER:
+                    continue
+
+                row = RANKS_ORDER.index(r1)
+                col = RANKS_ORDER.index(r2)
+
+                # Suited hands above diagonal, offsuit below
+                if s1 == s2:  # Suited
+                    if row > col:
+                        row, col = col, row
+                else:  # Offsuit
+                    if row < col:
+                        row, col = col, row
+
+                # Get action frequencies for this hand
+                action_freqs = {}
+                total_freq = 0
+                for action, freqs in strategy.items():
+                    if i < len(freqs):
+                        freq = freqs[i]
+                        if freq > 0:
+                            action_freqs[action] = freq
+                            total_freq += freq
+
+                if total_freq > 0:
+                    # Aggregate into this cell
+                    if grid[row][col] is None:
+                        grid[row][col] = {'actions': {}, 'count': 0}
+
+                    for action, freq in action_freqs.items():
+                        if action not in grid[row][col]['actions']:
+                            grid[row][col]['actions'][action] = 0
+                        grid[row][col]['actions'][action] += freq
+                    grid[row][col]['count'] += 1
+
+            # Average and normalize the frequencies
+            for row in range(13):
+                for col in range(13):
+                    if grid[row][col] and grid[row][col]['count'] > 0:
+                        count = grid[row][col]['count']
+                        actions = grid[row][col]['actions']
+                        # Normalize by count
+                        for action in actions:
+                            actions[action] /= count
+                        grid[row][col] = actions
+                    else:
+                        grid[row][col] = {}
+
+            return {
+                'grid': grid,
+                'actions': actions,
+                'node': self.pio_node
+            }
+
+        except Exception as e:
+            print(f"[GameState] Error getting villain strategy: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            return None
+
     def get_stats(self) -> Dict[str, Any]:
         player = self.get_player_to_act()
         if not player:
@@ -496,5 +662,7 @@ class GameState:
             'hand_complete': self.hand_complete,
             'winner': self.winner,
             'action_history': self.action_history,
-            'pio_file': self.pio_file
+            'pio_file': self.pio_file,
+            'pio_node': self.pio_node,
+            'villain_strategy': self._get_villain_strategy()
         }

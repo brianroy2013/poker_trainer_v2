@@ -1,11 +1,27 @@
 from flask import Blueprint, request, jsonify
 from game.game_state import GameState
+from game.pio_solver import PioSolverConnection
 from players.computer_player import ComputerPlayer
 
 game_bp = Blueprint('game', __name__)
 
+# Singleton PioSolver connection
+pio_connection = None
 game_state = GameState()
 computer_player = ComputerPlayer()
+
+
+def get_pio_connection():
+    """Get or create the singleton PioSolver connection."""
+    global pio_connection
+    if pio_connection is None:
+        try:
+            pio_connection = PioSolverConnection()
+            print("[Routes] PioSolver connection established", flush=True)
+        except Exception as e:
+            print(f"[Routes] Failed to create PioSolver connection: {e}", flush=True)
+            return None
+    return pio_connection
 
 
 @game_bp.route('/new', methods=['POST'])
@@ -22,7 +38,16 @@ def new_game():
     if hero_position == villain_position:
         return jsonify({'error': 'Hero and villain must be in different positions'}), 400
 
+    # Set up PioSolver connection
+    pio = get_pio_connection()
+    game_state.pio_connection = pio
+    computer_player.set_pio_connection(pio)
+
     game_state.start_new_hand(hero_position, villain_position)
+
+    # Load the tree file if we have a connection
+    if pio and game_state.pio_file:
+        pio.load_tree(game_state.pio_file)
 
     # Don't auto-process computer actions - let frontend animate them
     return jsonify(game_state.to_dict())

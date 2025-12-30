@@ -132,6 +132,89 @@ class PioSolverConnection:
 
         return all_values
 
+    def show_children(self, node_id: str = "r:0") -> List[Dict]:
+        """
+        Get all child nodes of a given node.
+
+        Args:
+            node_id: Node identifier (e.g., 'r:0' for root)
+
+        Returns:
+            List of dicts with 'action' (e.g., 'c', 'b75', 'f') and 'node_id' (full path)
+        """
+        response = self._send_command(f"show_children {node_id}")
+
+        children = []
+        # Response contains detailed info for each child
+        # Child node IDs are lines that start with the parent node_id followed by ":"
+        # e.g., for parent 'r:0', children are 'r:0:c', 'r:0:b75', etc.
+        prefix = node_id + ":"
+        for line in response:
+            line = line.strip()
+            if line.startswith(prefix):
+                # This is a child node ID - extract the action
+                action = line[len(prefix):]
+                # Skip if action contains spaces (not a valid action)
+                if ' ' not in action and action:
+                    children.append({
+                        'action': action,
+                        'node_id': line
+                    })
+
+        print(f"[PioSolver] show_children({node_id}) -> {children}", flush=True)
+        return children
+
+    def show_strategy(self, node_id: str) -> Dict[str, List[float]]:
+        """
+        Get strategy frequencies for all actions at a decision node.
+
+        Args:
+            node_id: Node identifier
+
+        Returns:
+            Dict mapping action string -> list of 1326 frequencies
+        """
+        # First get children to know what actions are available
+        children = self.show_children(node_id)
+        if not children:
+            return {}
+
+        response = self._send_command(f"show_strategy {node_id}")
+
+        # Response format: each line contains 1326 frequencies for one action
+        # Actions are in the same order as children
+        strategy = {}
+        for i, line in enumerate(response):
+            if i < len(children):
+                action = children[i]['action']
+                values = line.strip().split()
+                try:
+                    frequencies = [float(v) for v in values]
+                    if len(frequencies) == 1326:
+                        strategy[action] = frequencies
+                except ValueError:
+                    continue
+
+        return strategy
+
+    def get_hand_index(self, hand: str) -> int:
+        """
+        Get the index in 1326-hand array for the given hand.
+
+        Args:
+            hand: Hand string like 'AsKd' or 'KdAs'
+
+        Returns:
+            Index in hand_order, or -1 if not found
+        """
+        if hand in self.hand_order:
+            return self.hand_order.index(hand)
+        # Try reversed card order
+        reversed_hand = hand[2:4] + hand[0:2]
+        if reversed_hand in self.hand_order:
+            return self.hand_order.index(reversed_hand)
+        return -1
+
     def get_hands_with_frequencies(self, player: str, node_id: str = "r", board_cards: List[str] = None) -> List[Tuple[str, float]]:
         """
         Get all hands with their frequencies for a player.

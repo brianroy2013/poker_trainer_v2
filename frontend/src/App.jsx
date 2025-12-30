@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PokerTable from './components/Table/PokerTable';
 import ActionPanel from './components/Controls/ActionPanel';
 import StatsPanel from './components/Display/StatsPanel';
+import StrategyGrid from './components/Display/StrategyGrid';
 import GameSetup, { getOpponentStyleIcon } from './components/GameSetup';
 import { useGameState } from './hooks/useGameState';
 
@@ -130,10 +131,8 @@ function App() {
           <StatsPanel gameState={gameState} />
 
           <div className="range-grid-container">
-            <h3>AI Range</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-              Complete the hand to see AI ranges
-            </p>
+            <h3>{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy</h3>
+            <StrategyGrid strategyData={gameState?.villain_strategy} />
           </div>
 
           <div className="hand-review">
