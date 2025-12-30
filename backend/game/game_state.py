@@ -382,20 +382,44 @@ class GameState:
             if child_node:
                 self.pio_node = child_node
 
+        # Calculate pot before this action (for percentage display)
+        # Total pot = main pot + all current bets on the table
+        total_pot_before = self.pot + sum(p.current_bet for p in self.players.values())
+
         # Calculate call amount for recording
         call_amount = None
+        pot_before_bet = None
         if action == 'call':
             call_amount = self.current_bet - player.current_bet
             call_amount = min(call_amount, player.stack)
+            # For calls, pot_before_bet is the pot before the bet being called
+            # This is: total_pot - the bet amount already on the table from the bettor
+            pot_before_bet = total_pot_before - self.current_bet
+
+        # Determine if this is a bet or raise for display purposes
+        # Post-flop: first aggression is 'bet', subsequent is 'raise'
+        # Preflop: blinds count as bets, so any increase is 'raise'
+        display_action = action
+        bet_being_raised = None
+        if action == 'raise':
+            if self.street != 'preflop' and self.current_bet == 0:
+                display_action = 'bet'
+            else:
+                # Track the bet being raised (for multiplier display)
+                bet_being_raised = self.current_bet
+            # For bets/raises, pot_before_bet is the current total pot
+            pot_before_bet = total_pot_before
 
         # Record action in history
         action_record = {
             'position': player.position,
-            'action': action,
+            'action': display_action,
             'street': self.street,
             'amount': amount if action in ['raise', 'bet'] else None,
             'call_amount': call_amount,
-            'current_bet': self.current_bet if action == 'raise' else None
+            'current_bet': self.current_bet if action == 'raise' else None,
+            'pot_before_bet': pot_before_bet,
+            'bet_being_raised': bet_being_raised
         }
         self.action_history.append(action_record)
 

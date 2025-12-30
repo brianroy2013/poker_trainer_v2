@@ -622,23 +622,27 @@ body {
 }
 
 .action-symbol.action-fold {
-  background: #3d7cb8;
+  background: rgb(109, 162, 192);
   color: #fff;
 }
 
 .action-symbol.action-check {
-  background: #3b82f6;
+  background: rgb(143, 188, 139);
   color: #fff;
 }
 
 .action-symbol.action-call {
-  background: #5ab966;
+  background: rgb(143, 188, 139);
   color: #fff;
 }
 
-.action-symbol.action-bet,
+.action-symbol.action-bet {
+  background: rgb(233, 150, 122);
+  color: #fff;
+}
+
 .action-symbol.action-raise {
-  background: #f03c3c;
+  background: rgb(177, 91, 74);
   color: #fff;
 }
 

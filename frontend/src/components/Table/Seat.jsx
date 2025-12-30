@@ -9,7 +9,12 @@ const getActionSymbol = (action) => {
     case 'fold': return 'F';
     case 'check': return 'X';
     case 'call': {
-      // Show call amount in BB (1 decimal only if needed)
+      // Show call as percentage of pot (post-flop only)
+      if (action.street !== 'preflop' && action.call_amount && action.call_amount > 0 && action.pot_before_bet) {
+        const pct = Math.round((action.call_amount / action.pot_before_bet) * 100);
+        return `C ${pct}%`;
+      }
+      // Show BB for preflop
       if (action.call_amount && action.call_amount > 0) {
         const bbAmount = action.call_amount / BIG_BLIND;
         const display = bbAmount % 1 === 0 ? bbAmount.toFixed(0) : bbAmount.toFixed(1);
@@ -17,17 +22,26 @@ const getActionSymbol = (action) => {
       }
       return 'C';
     }
-    case 'bet':
+    case 'bet': {
+      // Show bet as percentage of pot
+      if (action.amount && action.pot_before_bet) {
+        const pct = Math.round((action.amount / action.pot_before_bet) * 100);
+        return `B ${pct}%`;
+      }
+      return 'B';
+    }
     case 'raise': {
       // For preflop, show raise in BB (e.g., "R 4BB")
       if (action.amount && action.street === 'preflop') {
         const bbAmount = Math.round(action.amount / BIG_BLIND);
         return `R ${bbAmount}BB`;
       }
-      // For postflop, show as multiplier of current bet
-      if (action.amount && action.current_bet && action.current_bet > 0) {
-        const multiplier = Math.round(action.amount / action.current_bet);
-        return `R ${multiplier}x`;
+      // For postflop raises, show as multiple of the bet being raised
+      if (action.amount && action.bet_being_raised && action.bet_being_raised > 0) {
+        const multiplier = action.amount / action.bet_being_raised;
+        // Show 1 decimal if needed, otherwise whole number
+        const display = multiplier % 1 === 0 ? multiplier.toFixed(0) : multiplier.toFixed(1);
+        return `R ${display}x`;
       }
       return 'R';
     }
