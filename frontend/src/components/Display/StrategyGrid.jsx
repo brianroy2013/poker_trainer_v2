@@ -2,21 +2,23 @@ import React from 'react';
 
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
 
-// Action colors
+// PioSolver-style colors
+// Fold = Blue, Check/Call = Green, Bets = Orange shades
 const ACTION_COLORS = {
-  'c': '#3b82f6',      // Check/Call - Blue
-  'f': '#6b7280',      // Fold - Gray
+  'c': '#22c55e',      // Check/Call - Green
+  'f': '#3b82f6',      // Fold - Blue
 };
 
-// Generate colors for bet sizes (reds/oranges)
+// Generate colors for bet sizes (orange shades - lighter for small, darker for large)
 const getBetColor = (action) => {
-  if (!action.startsWith('b')) return '#ef4444';
+  if (!action.startsWith('b')) return '#f97316';
   const size = parseInt(action.substring(1)) || 0;
-  // Smaller bets = lighter red, bigger bets = darker red
-  if (size < 50) return '#f97316';      // Orange
-  if (size < 100) return '#ef4444';     // Red
-  if (size < 200) return '#dc2626';     // Dark red
-  return '#991b1b';                      // Very dark red
+  // Smaller bets = lighter orange, bigger bets = darker orange/red
+  if (size < 30) return '#fdba74';       // Light orange
+  if (size < 60) return '#fb923c';       // Orange
+  if (size < 100) return '#f97316';      // Medium orange
+  if (size < 150) return '#ea580c';      // Dark orange
+  return '#c2410c';                       // Deep orange/red
 };
 
 const getActionColor = (action) => {
