@@ -135,6 +135,7 @@ class GameState:
         self.available_cards: set = set()  # Tracks all available cards (52 - used cards)
         self.pio_node: str = 'r:0'  # Current position in PioSolver game tree
         self.pio_connection: Optional[PioSolverConnection] = None  # Reference to PioSolver
+        self.last_villain_strategy: Optional[Dict] = None  # Cache last villain strategy for display
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -156,6 +157,7 @@ class GameState:
         self.villain_position = villain_position
         self.action_history = []
         self.pio_node = 'r:0'  # Reset to root node
+        self.last_villain_strategy = None  # Reset cached strategy
 
         # Initialize available cards with all 52 cards
         self.available_cards = {f"{r}{s}" for r in RANKS for s in SUITS}
@@ -568,6 +570,11 @@ class GameState:
         if not self.pio_connection or not self.pio_node or self.street == 'preflop':
             return None
 
+        # If it's the hero's turn, return the cached villain strategy
+        player = self.get_player_to_act()
+        if not player or player.is_human:
+            return self.last_villain_strategy
+
         try:
             # Get strategy at current node
             strategy = self.pio_connection.show_strategy(self.pio_node)
@@ -586,7 +593,16 @@ class GameState:
             # Build 13x13 strategy grid for each action
             RANKS_ORDER = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
 
-            # For each cell, store the dominant action and its frequency
+            # Total combos per hand class: pairs=6, suited=4, offsuit=12
+            def get_max_combos(row, col):
+                if row == col:
+                    return 6  # Pairs
+                elif row < col:
+                    return 4  # Suited (above diagonal)
+                else:
+                    return 12  # Offsuit (below diagonal)
+
+            # For each cell, store actions and count of combos in range
             grid = [[None] * 13 for _ in range(13)]
 
             for i, hand in enumerate(hand_order):
@@ -608,7 +624,7 @@ class GameState:
                     if row < col:
                         row, col = col, row
 
-                # Get action frequencies for this hand
+                # Get action frequencies for this hand (sum = how much of this combo is in range)
                 action_freqs = {}
                 total_freq = 0
                 for action, freqs in strategy.items():
@@ -618,41 +634,48 @@ class GameState:
                             action_freqs[action] = freq
                             total_freq += freq
 
-                if total_freq > 0:
-                    # Aggregate into this cell
-                    if grid[row][col] is None:
-                        grid[row][col] = {'actions': {}, 'count': 0}
+                # Always count this combo, even if not in range
+                if grid[row][col] is None:
+                    grid[row][col] = {'actions': {}, 'in_range_sum': 0, 'total_combos': 0}
 
+                grid[row][col]['total_combos'] += 1
+
+                if total_freq > 0:
+                    # This combo is in range - add its frequencies
+                    grid[row][col]['in_range_sum'] += total_freq
                     for action, freq in action_freqs.items():
                         if action not in grid[row][col]['actions']:
                             grid[row][col]['actions'][action] = 0
                         grid[row][col]['actions'][action] += freq
-                    grid[row][col]['count'] += 1
 
-            # Average and normalize the frequencies
+            # Normalize: divide action freqs by max possible combos to get true range %
             for row in range(13):
                 for col in range(13):
-                    if grid[row][col] and grid[row][col]['count'] > 0:
-                        count = grid[row][col]['count']
-                        actions = grid[row][col]['actions']
-                        # Normalize by count
-                        for action in actions:
-                            actions[action] /= count
-                        grid[row][col] = actions
+                    max_combos = get_max_combos(row, col)
+                    if grid[row][col] and grid[row][col]['total_combos'] > 0:
+                        cell = grid[row][col]
+                        # Normalize action frequencies by max possible combos
+                        # This gives us the true "% of hand class in range taking this action"
+                        normalized = {}
+                        for action, freq_sum in cell['actions'].items():
+                            normalized[action] = freq_sum / max_combos
+                        grid[row][col] = normalized
                     else:
                         grid[row][col] = {}
 
-            return {
+            # Cache and return the strategy
+            self.last_villain_strategy = {
                 'grid': grid,
                 'actions': actions,
                 'node': self.pio_node
             }
+            return self.last_villain_strategy
 
         except Exception as e:
             print(f"[GameState] Error getting villain strategy: {e}", flush=True)
             import traceback
             traceback.print_exc()
-            return None
+            return self.last_villain_strategy  # Return cached version on error
 
     def get_stats(self) -> Dict[str, Any]:
         player = self.get_player_to_act()

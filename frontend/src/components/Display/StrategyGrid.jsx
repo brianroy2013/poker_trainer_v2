@@ -45,6 +45,12 @@ function StrategyGrid({ strategyData }) {
 
   const { grid, actions } = strategyData;
 
+  // Calculate total frequency for each cell (sum of action frequencies = % in range)
+  const getCellFrequency = (cellActions) => {
+    if (!cellActions || Object.keys(cellActions).length === 0) return 0;
+    return Math.min(Object.values(cellActions).reduce((sum, freq) => sum + freq, 0), 1);
+  };
+
   const getCellLabel = (row, col) => {
     if (row === col) {
       return RANKS[row] + RANKS[col];  // Pairs: AA, KK
@@ -55,39 +61,50 @@ function StrategyGrid({ strategyData }) {
     }
   };
 
+  // Build vertical gradient: gray on top (not in range), strategy colors on bottom (in range)
   const getCellStyle = (cellActions) => {
-    if (!cellActions || Object.keys(cellActions).length === 0) {
-      return { backgroundColor: 'rgba(255, 255, 255, 0.05)' };
+    const inRangePercent = getCellFrequency(cellActions) * 100;
+    const notInRangePercent = 100 - inRangePercent;
+
+    if (inRangePercent === 0) {
+      // Not in range at all - full gray
+      return { backgroundColor: 'rgba(80, 80, 80, 0.6)' };
     }
 
-    // Create gradient based on action frequencies
-    const sortedActions = Object.entries(cellActions)
+    // Get action colors for the in-range portion
+    const sortedActions = Object.entries(cellActions || {})
       .filter(([_, freq]) => freq > 0.01)
       .sort((a, b) => b[1] - a[1]);
 
     if (sortedActions.length === 0) {
-      return { backgroundColor: 'rgba(255, 255, 255, 0.05)' };
+      return { backgroundColor: 'rgba(80, 80, 80, 0.6)' };
     }
 
-    if (sortedActions.length === 1) {
-      const [action, freq] = sortedActions[0];
-      const color = getActionColor(action);
-      return { backgroundColor: color, opacity: 0.4 + freq * 0.6 };
-    }
-
-    // Multiple actions - create gradient
+    // Build gradient parts
     let gradientParts = [];
-    let cumulative = 0;
+
+    // Top portion: gray (not in range)
+    if (notInRangePercent > 0) {
+      gradientParts.push(`rgba(80, 80, 80, 0.6) 0%`);
+      gradientParts.push(`rgba(80, 80, 80, 0.6) ${notInRangePercent.toFixed(1)}%`);
+    }
+
+    // Bottom portion: action colors (in range)
+    // Normalize action frequencies within the in-range portion
+    const totalActionFreq = sortedActions.reduce((sum, [_, f]) => sum + f, 0);
+    let cumulative = notInRangePercent;
+
     for (const [action, freq] of sortedActions) {
       const color = getActionColor(action);
-      const start = cumulative * 100;
-      cumulative += freq;
-      const end = cumulative * 100;
-      gradientParts.push(`${color} ${start.toFixed(0)}% ${end.toFixed(0)}%`);
+      const actionPercent = (freq / totalActionFreq) * inRangePercent;
+      const start = cumulative;
+      cumulative += actionPercent;
+      gradientParts.push(`${color} ${start.toFixed(1)}%`);
+      gradientParts.push(`${color} ${cumulative.toFixed(1)}%`);
     }
 
     return {
-      background: `linear-gradient(135deg, ${gradientParts.join(', ')})`,
+      background: `linear-gradient(to right, ${gradientParts.join(', ')})`,
     };
   };
 

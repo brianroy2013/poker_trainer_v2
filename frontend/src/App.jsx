@@ -133,33 +133,6 @@ function App() {
             <h3>{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy</h3>
             <StrategyGrid strategyData={gameState?.villain_strategy} />
           </div>
-
-          <div className="hand-review">
-            <h3>Hand Review</h3>
-            {gameState?.action_history && gameState.action_history.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {gameState.action_history.slice(-10).map((action, i) => (
-                  <div key={i} className="review-item" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ color: 'var(--chip-blue)', fontWeight: 600 }}>{action.position}</span>
-                    <span style={{
-                      color: action.action === 'fold' ? '#3d7cb8' :
-                             action.action === 'check' ? '#3b82f6' :
-                             action.action === 'call' ? '#5ab966' : '#f03c3c'
-                    }}>
-                      {action.action.toUpperCase()}
-                    </span>
-                    {action.amount > 0 && (
-                      <span style={{ color: 'var(--gold)' }}>${action.amount}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                Complete the hand to review actions
-              </p>
-            )}
-          </div>
         </div>
       </div>
     </div>
