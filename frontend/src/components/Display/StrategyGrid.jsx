@@ -3,27 +3,54 @@ import React from 'react';
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
 
 // PioSolver-style colors
-// Fold = Blue, Check/Call = Green, Bets = Orange shades
+// Fold = Blue, Check/Call = Green, Bets = Orange/Red shades
 const ACTION_COLORS = {
-  'c': '#22c55e',      // Check/Call - Green
-  'f': '#3b82f6',      // Fold - Blue
+  'c': 'rgb(143, 188, 139)',   // Check/Call - Green
+  'f': 'rgb(109, 162, 192)',   // Fold - Blue
 };
 
-// Generate colors for bet sizes (orange shades - lighter for small, darker for large)
-const getBetColor = (action) => {
-  if (!action.startsWith('b')) return '#f97316';
-  const size = parseInt(action.substring(1)) || 0;
-  // Smaller bets = lighter orange, bigger bets = darker orange/red
-  if (size < 30) return '#fdba74';       // Light orange
-  if (size < 60) return '#fb923c';       // Orange
-  if (size < 100) return '#f97316';      // Medium orange
-  if (size < 150) return '#ea580c';      // Dark orange
-  return '#c2410c';                       // Deep orange/red
+// Bet colors: smallest = light, largest = dark
+const BET_COLOR_SMALL = { r: 233, g: 150, b: 122 };  // Light orange/salmon
+const BET_COLOR_LARGE = { r: 177, g: 91, b: 74 };    // Dark red/brown
+
+// Interpolate between two colors based on ratio (0 = small, 1 = large)
+const interpolateColor = (ratio) => {
+  const r = Math.round(BET_COLOR_SMALL.r + (BET_COLOR_LARGE.r - BET_COLOR_SMALL.r) * ratio);
+  const g = Math.round(BET_COLOR_SMALL.g + (BET_COLOR_LARGE.g - BET_COLOR_SMALL.g) * ratio);
+  const b = Math.round(BET_COLOR_SMALL.b + (BET_COLOR_LARGE.b - BET_COLOR_SMALL.b) * ratio);
+  return `rgb(${r}, ${g}, ${b})`;
 };
 
-const getActionColor = (action) => {
+// Build bet color map based on available bet sizes
+const buildBetColorMap = (actions) => {
+  const betActions = actions.filter(a => a.startsWith('b'));
+  if (betActions.length === 0) return {};
+
+  // Extract and sort bet sizes
+  const betSizes = betActions
+    .map(a => ({ action: a, size: parseInt(a.substring(1)) || 0 }))
+    .sort((a, b) => a.size - b.size);
+
+  const colorMap = {};
+
+  if (betSizes.length === 1) {
+    // Single bet: use small color
+    colorMap[betSizes[0].action] = interpolateColor(0);
+  } else {
+    // Multiple bets: interpolate based on position
+    betSizes.forEach((bet, index) => {
+      const ratio = index / (betSizes.length - 1);
+      colorMap[bet.action] = interpolateColor(ratio);
+    });
+  }
+
+  return colorMap;
+};
+
+const getActionColor = (action, betColorMap = {}) => {
   if (action in ACTION_COLORS) return ACTION_COLORS[action];
-  if (action.startsWith('b')) return getBetColor(action);
+  if (action in betColorMap) return betColorMap[action];
+  if (action.startsWith('b')) return interpolateColor(0.5);  // Fallback
   return '#a855f7';  // Purple for unknown
 };
 
@@ -47,6 +74,9 @@ function StrategyGrid({ strategyData }) {
 
   const { grid, actions } = strategyData;
 
+  // Build bet color map based on available actions at this node
+  const betColorMap = buildBetColorMap(actions || []);
+
   // Calculate total frequency for each cell (sum of action frequencies = % in range)
   const getCellFrequency = (cellActions) => {
     if (!cellActions || Object.keys(cellActions).length === 0) return 0;
@@ -63,50 +93,63 @@ function StrategyGrid({ strategyData }) {
     }
   };
 
-  // Build vertical gradient: gray on top (not in range), strategy colors on bottom (in range)
+  // Build 2D gradient:
+  // - Vertical: gray on top (not in range), transparent on bottom (in range)
+  // - Horizontal: action colors left-to-right
   const getCellStyle = (cellActions) => {
     const inRangePercent = getCellFrequency(cellActions) * 100;
     const notInRangePercent = 100 - inRangePercent;
 
     if (inRangePercent === 0) {
-      // Not in range at all - full gray
-      return { backgroundColor: 'rgba(80, 80, 80, 0.6)' };
+      // Not in range at all
+      return { backgroundColor: 'rgb(27, 27, 40)' };
     }
 
     // Get action colors for the in-range portion
+    // Order: call/check, bets (smallest to largest), fold
+    const getActionOrder = (action) => {
+      if (action === 'c') return 0;  // Call/check first
+      if (action === 'f') return 1000;  // Fold last
+      if (action.startsWith('b')) {
+        return 1 + (parseInt(action.substring(1)) || 0);  // Bets in between, sorted by size
+      }
+      return 500;  // Unknown actions
+    };
+
     const sortedActions = Object.entries(cellActions || {})
       .filter(([_, freq]) => freq > 0.01)
-      .sort((a, b) => b[1] - a[1]);
+      .sort((a, b) => getActionOrder(a[0]) - getActionOrder(b[0]));
 
     if (sortedActions.length === 0) {
-      return { backgroundColor: 'rgba(80, 80, 80, 0.6)' };
+      return { backgroundColor: 'rgb(27, 27, 40)' };
     }
 
-    // Build gradient parts
-    let gradientParts = [];
-
-    // Top portion: gray (not in range)
-    if (notInRangePercent > 0) {
-      gradientParts.push(`rgba(80, 80, 80, 0.6) 0%`);
-      gradientParts.push(`rgba(80, 80, 80, 0.6) ${notInRangePercent.toFixed(1)}%`);
-    }
-
-    // Bottom portion: action colors (in range)
-    // Normalize action frequencies within the in-range portion
+    // Build horizontal gradient for action colors (left to right)
+    let actionGradientParts = [];
     const totalActionFreq = sortedActions.reduce((sum, [_, f]) => sum + f, 0);
-    let cumulative = notInRangePercent;
+    let cumulative = 0;
 
     for (const [action, freq] of sortedActions) {
-      const color = getActionColor(action);
-      const actionPercent = (freq / totalActionFreq) * inRangePercent;
+      const color = getActionColor(action, betColorMap);
+      const actionPercent = (freq / totalActionFreq) * 100;
       const start = cumulative;
       cumulative += actionPercent;
-      gradientParts.push(`${color} ${start.toFixed(1)}%`);
-      gradientParts.push(`${color} ${cumulative.toFixed(1)}%`);
+      actionGradientParts.push(`${color} ${start.toFixed(1)}%`);
+      actionGradientParts.push(`${color} ${cumulative.toFixed(1)}%`);
+    }
+
+    const actionGradient = `linear-gradient(to right, ${actionGradientParts.join(', ')})`;
+
+    // Build vertical overlay: solid color on top (not in range), transparent on bottom
+    if (notInRangePercent > 0) {
+      const notInRangeOverlay = `linear-gradient(to bottom, rgb(27, 27, 40) 0%, rgb(27, 27, 40) ${notInRangePercent.toFixed(1)}%, transparent ${notInRangePercent.toFixed(1)}%)`;
+      return {
+        background: `${notInRangeOverlay}, ${actionGradient}`,
+      };
     }
 
     return {
-      background: `linear-gradient(to bottom, ${gradientParts.join(', ')})`,
+      background: actionGradient,
     };
   };
 
@@ -150,7 +193,7 @@ function StrategyGrid({ strategyData }) {
             <div key={action} className="legend-item">
               <div
                 className="legend-color"
-                style={{ backgroundColor: getActionColor(action) }}
+                style={{ backgroundColor: getActionColor(action, betColorMap) }}
               />
               <span>{getActionLabel(action)}</span>
             </div>
