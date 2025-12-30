@@ -1054,6 +1054,34 @@ body {
   color: var(--gold);
 }
 
+/* Collapsible sidebar sections */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+
+.collapsible-header:hover {
+  opacity: 0.8;
+}
+
+.collapse-icon {
+  font-size: 0.7rem;
+  width: 12px;
+  display: inline-block;
+}
+
+.collapsible.collapsed {
+  padding-bottom: 12px;
+}
+
+.collapsible.collapsed .collapsible-header {
+  margin-bottom: 0;
+}
+
 .hand-strategies {
   display: flex;
   flex-direction: column;

@@ -135,7 +135,10 @@ export default function PokerTable({ gameState, onHeroCanAct, onComputerAction, 
         player: (isHeroSeat || isVillainSeat) ? {
           ...player,
           position,
-          cards: player?.hole_cards || player?.cards,
+          // Hide villain's cards until showdown
+          cards: isHeroSeat || gameState.hand_complete
+            ? (player?.hole_cards || player?.cards)
+            : ['??', '??'],
           current_bet: player?.current_bet || 0,
         } : null,
         // Pass actual player data for empty seats (for blinds display)

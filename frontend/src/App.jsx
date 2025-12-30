@@ -67,6 +67,8 @@ function App() {
   const [gameConfig, setGameConfig] = useState(null);
   const [handNumber, setHandNumber] = useState(1);
   const [heroCanAct, setHeroCanAct] = useState(false);
+  const [strategyCollapsed, setStrategyCollapsed] = useState(true);
+  const [testingCollapsed, setTestingCollapsed] = useState(true);
 
   const handleStartGame = async (config) => {
     setGameConfig(config);
@@ -172,14 +174,20 @@ function App() {
         </div>
 
         <div className="side-panel">
-          <div className="range-grid-container">
-            <h3>{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy</h3>
-            <StrategyGrid strategyData={gameState?.villain_strategy} />
+          <div className={`range-grid-container collapsible ${strategyCollapsed ? 'collapsed' : ''}`}>
+            <h3 className="collapsible-header" onClick={() => setStrategyCollapsed(!strategyCollapsed)}>
+              <span className="collapse-icon">{strategyCollapsed ? '▶' : '▼'}</span>
+              {gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy
+            </h3>
+            {!strategyCollapsed && <StrategyGrid strategyData={gameState?.villain_strategy} />}
           </div>
 
-          <div className="testing-panel">
-            <h3>Testing</h3>
-            <div className="hand-strategies">
+          <div className={`testing-panel collapsible ${testingCollapsed ? 'collapsed' : ''}`}>
+            <h3 className="collapsible-header" onClick={() => setTestingCollapsed(!testingCollapsed)}>
+              <span className="collapse-icon">{testingCollapsed ? '▶' : '▼'}</span>
+              Testing
+            </h3>
+            {!testingCollapsed && <div className="hand-strategies">
               <div className="strategy-row villain-strategy">
                 <span className="strategy-label">{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'Villain'}:</span>
                 <div className="strategy-data">
@@ -220,7 +228,7 @@ function App() {
                   <span className="no-strategy">—</span>
                 )}
               </div>
-            </div>
+            </div>}
           </div>
         </div>
       </div>
