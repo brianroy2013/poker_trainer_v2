@@ -8,7 +8,7 @@ const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'];
 // Preflop action order (UTG acts first, then clockwise)
 const PREFLOP_ACTION_ORDER = ['UTG', 'MP', 'CO', 'BTN', 'SB', 'BB'];
 
-export default function PokerTable({ gameState, onHeroCanAct, onComputerAction }) {
+export default function PokerTable({ gameState, onHeroCanAct, onComputerAction, opponentStyleIcon, opponentStyleName }) {
   const [visualActionOn, setVisualActionOn] = useState(null);
   const [foldedPositions, setFoldedPositions] = useState(new Set());
   const [preflopDone, setPreflopDone] = useState(false);
@@ -194,6 +194,8 @@ export default function PokerTable({ gameState, onHeroCanAct, onComputerAction }
           isActive={displayActionOn === seat.position}
           isDealer={seat.isDealer}
           actionHistory={gameState.action_history}
+          villainIcon={seat.position === villainPosition ? opponentStyleIcon : null}
+          villainName={seat.position === villainPosition ? opponentStyleName : null}
         />
       ))}
 

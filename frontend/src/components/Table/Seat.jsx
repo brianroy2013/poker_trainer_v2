@@ -54,7 +54,7 @@ const getPlayerActionsForPosition = (actionHistory, pos) => {
   return byStreet;
 };
 
-export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded }) {
+export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isDealer, actionHistory, position, isEmpty, hasFolded, villainIcon, villainName }) {
   // Get actions for this position from backend action history
   const positionActions = getPlayerActionsForPosition(actionHistory, position);
 
@@ -85,7 +85,7 @@ export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isD
         )}
         <div className={`player-info${hasFolded ? ' folded' : ''}${isActive ? ' active' : ''}`}>
           <span className="player-position">{position}</span>
-          <span className="player-name">Villain</span>
+          <span className="player-name">{villainIcon} {villainName || 'Villain'}</span>
           <span className="player-stack">${stack}</span>
         </div>
         {currentBet > 0 && (
@@ -162,7 +162,7 @@ export default function Seat({ player, emptyPlayerData, seatIndex, isActive, isD
       <div className={infoClasses}>
         <span className="player-position">{player.position}</span>
         <span className={`player-name${!isHero ? ' clickable' : ''}`} title={!isHero ? 'Click to download range log' : ''}>
-          {player.label || player.name || (isHero ? 'Hero' : 'Villain')}
+          {isHero ? 'Hero' : <>{villainIcon} {villainName || 'Villain'}</>}
         </span>
         <span className="player-stack">${player.stack}</span>
       </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import PokerTable from './components/Table/PokerTable';
 import ActionPanel from './components/Controls/ActionPanel';
 import StatsPanel from './components/Display/StatsPanel';
-import GameSetup from './components/GameSetup';
+import GameSetup, { getOpponentStyleIcon } from './components/GameSetup';
 import { useGameState } from './hooks/useGameState';
 
 function App() {
@@ -86,6 +86,8 @@ function App() {
             gameState={gameState}
             onHeroCanAct={setHeroCanAct}
             onComputerAction={triggerComputerAction}
+            opponentStyleIcon={gameConfig ? getOpponentStyleIcon(gameConfig.opponent_style) : ''}
+            opponentStyleName={gameConfig?.opponent_style || 'Villain'}
           />
 
           {gameState?.hand_complete ? (

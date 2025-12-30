@@ -1,15 +1,32 @@
 import React, { useState } from 'react';
 
 const POSITIONS = ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'];
+const OPPONENT_STYLES = [
+  { id: 'GTO', label: 'GTO', icon: '🤖' },
+  { id: 'Fish', label: 'Fish', icon: '🐟' },
+  { id: 'Calling Station', label: 'Calling Station', icon: '📞' },
+  { id: 'Glass Cannon', label: 'Glass Cannon', icon: '💥' },
+  { id: 'Maniac', label: 'Maniac', icon: '🔥' },
+  { id: 'Nit', label: 'Nit', icon: '🔒' },
+  { id: 'TAG Reg', label: 'TAG Reg', icon: '🎯' },
+  { id: 'LAG Reg', label: 'LAG Reg', icon: '⚡' },
+];
+
+export const getOpponentStyleIcon = (styleId) => {
+  const style = OPPONENT_STYLES.find(s => s.id === styleId);
+  return style ? style.icon : '';
+};
 
 export default function GameSetup({ onStartGame, loading }) {
   const [heroPosition, setHeroPosition] = useState('BTN');
   const [villainPosition, setVillainPosition] = useState('BB');
+  const [opponentStyle, setOpponentStyle] = useState('GTO');
 
   const handleStart = () => {
     onStartGame({
       hero_position: heroPosition,
-      villain_position: villainPosition
+      villain_position: villainPosition,
+      opponent_style: opponentStyle
     });
   };
 
@@ -60,11 +77,26 @@ export default function GameSetup({ onStartGame, loading }) {
             ))}
           </div>
         </div>
+
+        <div className="position-selector">
+          <label>Opponent Style</label>
+          <div className="position-buttons">
+            {OPPONENT_STYLES.map(style => (
+              <button
+                key={style.id}
+                className={`position-btn ${opponentStyle === style.id ? 'selected villain' : ''}`}
+                onClick={() => setOpponentStyle(style.id)}
+              >
+                {style.icon} {style.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="setup-summary">
         <p>
-          <strong>Matchup:</strong> You ({heroPosition}) vs Villain ({villainPosition})
+          <strong>Matchup:</strong> You ({heroPosition}) vs {getOpponentStyleIcon(opponentStyle)} {opponentStyle} ({villainPosition})
         </p>
       </div>
 
