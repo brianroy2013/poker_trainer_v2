@@ -1,10 +1,39 @@
 import React, { useState } from 'react';
 import PokerTable from './components/Table/PokerTable';
 import ActionPanel from './components/Controls/ActionPanel';
-import StatsPanel from './components/Display/StatsPanel';
 import StrategyGrid from './components/Display/StrategyGrid';
 import GameSetup, { getOpponentStyleIcon } from './components/GameSetup';
 import { useGameState } from './hooks/useGameState';
+
+// Convert card notation to use suit symbols
+const formatCardWithSymbols = (card) => {
+  if (!card || card === '??') return '??';
+  const suitMap = { 's': '♠', 'h': '♥', 'd': '♦', 'c': '♣' };
+  const rank = card.slice(0, -1);
+  const suit = card.slice(-1);
+  return rank + (suitMap[suit] || suit);
+};
+
+const formatHandWithSymbols = (cards) => {
+  if (!cards || cards.length === 0) return '??';
+  return cards.map(formatCardWithSymbols).join('');
+};
+
+// Sort actions: check/call first, bets smallest to largest, fold last
+const sortActions = (entries) => {
+  return [...entries].sort(([a], [b]) => {
+    const getOrder = (action) => {
+      if (action === 'X/C') return 0;
+      if (action.startsWith('B')) {
+        const amount = parseInt(action.substring(1)) || 0;
+        return 1 + amount / 10000; // Small offset for bet ordering
+      }
+      if (action === 'Fold') return 100000;
+      return 50000;
+    };
+    return getOrder(a) - getOrder(b);
+  });
+};
 
 function App() {
   const {
@@ -127,11 +156,55 @@ function App() {
         </div>
 
         <div className="side-panel">
-          <StatsPanel gameState={gameState} />
-
           <div className="range-grid-container">
             <h3>{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'AI'} Strategy</h3>
             <StrategyGrid strategyData={gameState?.villain_strategy} />
+          </div>
+
+          <div className="testing-panel">
+            <h3>Testing</h3>
+            <div className="hand-strategies">
+              <div className="strategy-row villain-strategy">
+                <span className="strategy-label">{gameConfig ? `${getOpponentStyleIcon(gameConfig.opponent_style)} ${gameConfig.opponent_style}` : 'Villain'}:</span>
+                <div className="strategy-data">
+                  <div className="combo-freq-row">
+                    <span className="hand-text">
+                      {formatHandWithSymbols(gameState?.players?.[gameState?.villain_position]?.hole_cards)}
+                    </span>
+                    <span className="data-label">In Range:</span>
+                    {gameState?.players?.[gameState?.villain_position]?.combo_frequency != null ? (
+                      <span className="combo-freq">{gameState.players[gameState.villain_position].combo_frequency}%</span>
+                    ) : (
+                      <span className="no-strategy">—</span>
+                    )}
+                  </div>
+                  <div className="action-freq-row">
+                    <span className="data-label">Action:</span>
+                    {gameState?.players?.[gameState?.villain_position]?.hand_strategy ? (
+                      <div className="hand-strategy">
+                        {sortActions(Object.entries(gameState.players[gameState.villain_position].hand_strategy)).map(([action, freq]) => (
+                          <span key={action} className="strategy-item">{action}: {freq}%</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="no-strategy">—</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="strategy-row">
+                <span className="strategy-label">Hero:</span>
+                {gameState?.players?.[gameState?.human_position]?.hand_strategy ? (
+                  <div className="hand-strategy">
+                    {sortActions(Object.entries(gameState.players[gameState.human_position].hand_strategy)).map(([action, freq]) => (
+                      <span key={action} className="strategy-item">{action}: {freq}%</span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="no-strategy">—</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

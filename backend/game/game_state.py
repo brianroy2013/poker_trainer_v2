@@ -136,6 +136,8 @@ class GameState:
         self.pio_node: str = 'r:0'  # Current position in PioSolver game tree
         self.pio_connection: Optional[PioSolverConnection] = None  # Reference to PioSolver
         self.last_villain_strategy: Optional[Dict] = None  # Cache last villain strategy for display
+        self.player_hand_strategies: Dict[str, Dict] = {}  # Cache hand strategy per position
+        self.player_combo_frequencies: Dict[str, float] = {}  # Cache combo frequency per position
 
         self.seats: Dict[str, Dict] = {
             pos: {'active': False, 'folded': True}
@@ -158,6 +160,8 @@ class GameState:
         self.action_history = []
         self.pio_node = 'r:0'  # Reset to root node
         self.last_villain_strategy = None  # Reset cached strategy
+        self.player_hand_strategies = {}  # Reset hand strategy cache
+        self.player_combo_frequencies = {}  # Reset combo frequency cache
 
         # Initialize available cards with all 52 cards
         self.available_cards = {f"{r}{s}" for r in RANKS for s in SUITS}
@@ -804,6 +808,101 @@ class GameState:
             traceback.print_exc()
             return self.last_villain_strategy  # Return cached version on error
 
+    def _get_hand_strategy(self, hole_cards, pio_position: str) -> Optional[Dict[str, float]]:
+        """
+        Get strategy frequencies for a specific hand at the current node.
+
+        Args:
+            hole_cards: List of Card objects (player's hole cards)
+            pio_position: 'OOP' or 'IP'
+
+        Returns:
+            Dict mapping action labels to frequencies, e.g., {'Check': 0.45, 'Bet 21': 0.55}
+        """
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        if not hole_cards or len(hole_cards) < 2:
+            return None
+
+        try:
+            # Get hand string and find index
+            hand = str(hole_cards[0]) + str(hole_cards[1])
+            hand_idx = self.pio_connection.get_hand_index(hand)
+            if hand_idx < 0:
+                return None
+
+            # Get strategy at current node
+            strategy = self.pio_connection.show_strategy(self.pio_node)
+            if not strategy:
+                return None
+
+            # Get children to map actions
+            children = self.pio_connection.show_children(self.pio_node)
+            if not children:
+                return None
+
+            # Build result with readable action labels (include all actions, even 0%)
+            result = {}
+            for child in children:
+                action_str = child['action']
+                if action_str in strategy:
+                    freq = strategy[action_str][hand_idx]
+                    # Convert to readable label
+                    if action_str == 'f':
+                        label = 'Fold'
+                    elif action_str == 'c':
+                        label = 'X/C'
+                    elif action_str.startswith('b'):
+                        # Calculate actual bet amount
+                        pio_total = int(action_str[1:])
+                        player_invested = self._get_player_cumulative_invested(pio_position)
+                        actual_bet = pio_total - player_invested
+                        label = f'B{actual_bet}'
+                    else:
+                        label = action_str
+                    result[label] = round(freq * 100, 1)  # Convert to percentage
+
+            return result if result else None
+
+        except Exception as e:
+            print(f"[GameState] Error getting hand strategy: {e}", flush=True)
+            return None
+
+    def _get_combo_frequency(self, hole_cards, pio_position: str) -> Optional[float]:
+        """
+        Get the frequency/weight of a specific hand combo in the range at current node.
+
+        Args:
+            hole_cards: List of Card objects (player's hole cards)
+            pio_position: 'OOP' or 'IP'
+
+        Returns:
+            Float representing the combo frequency (0-1), or None if unavailable
+        """
+        if not self.pio_connection or not self.pio_node or self.street == 'preflop':
+            return None
+
+        if not hole_cards or len(hole_cards) < 2:
+            return None
+
+        try:
+            hand = str(hole_cards[0]) + str(hole_cards[1])
+            hand_idx = self.pio_connection.get_hand_index(hand)
+            if hand_idx < 0:
+                return None
+
+            # Get range at current node for this position
+            range_data = self.pio_connection.show_range(pio_position, self.pio_node)
+            if not range_data or len(range_data) <= hand_idx:
+                return None
+
+            return round(range_data[hand_idx] * 100, 1)  # Convert to percentage
+
+        except Exception as e:
+            print(f"[GameState] Error getting combo frequency: {e}", flush=True)
+            return None
+
     def get_stats(self) -> Dict[str, Any]:
         player = self.get_player_to_act()
         if not player:
@@ -839,7 +938,30 @@ class GameState:
         for pos, p in self.players.items():
             # For testing: always show villain cards
             hide = False  # was: not p.is_human and self.street != 'showdown' and not self.hand_complete
-            players_dict[pos] = p.to_dict(hide_cards=hide)
+            player_data = p.to_dict(hide_cards=hide)
+
+            # Update hand strategy and combo frequency cache when it's this player's turn to act
+            if p.is_active and p.hole_cards and not p.folded and pos == self.action_on:
+                # Determine PioSolver position: BTN = IP, BB = OOP
+                pio_pos = 'IP' if pos == 'BTN' else 'OOP'
+                new_strategy = self._get_hand_strategy(p.hole_cards, pio_pos)
+                if new_strategy:
+                    self.player_hand_strategies[pos] = new_strategy
+                # Cache combo frequency at decision point (for villain only)
+                if not p.is_human:
+                    combo_freq = self._get_combo_frequency(p.hole_cards, pio_pos)
+                    if combo_freq is not None:
+                        self.player_combo_frequencies[pos] = combo_freq
+
+            # Always include cached strategy if available
+            if pos in self.player_hand_strategies:
+                player_data['hand_strategy'] = self.player_hand_strategies[pos]
+
+            # Include cached combo frequency for villain
+            if pos in self.player_combo_frequencies:
+                player_data['combo_frequency'] = self.player_combo_frequencies[pos]
+
+            players_dict[pos] = player_data
 
         return {
             'hand_id': self.hand_id,
