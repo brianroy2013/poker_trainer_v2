@@ -701,9 +701,29 @@ class GameState:
                 return None
 
             # Get the actions available at this node
-            actions = list(strategy.keys())
-            if not actions:
+            raw_actions = list(strategy.keys())
+            if not raw_actions:
                 return None
+
+            # Calculate player's cumulative investment for actual bet amounts
+            player_invested = self._get_player_cumulative_invested(player)
+
+            # Parse actions to include actual bet amounts
+            actions = []
+            for action_str in raw_actions:
+                if action_str.startswith('b'):
+                    try:
+                        total = int(action_str[1:])
+                        actual_bet = total - player_invested
+                        actions.append({
+                            'action': action_str,
+                            'amount': actual_bet,
+                            'total': total
+                        })
+                    except ValueError:
+                        actions.append({'action': action_str, 'amount': None, 'total': None})
+                else:
+                    actions.append({'action': action_str, 'amount': None, 'total': None})
 
             # Build 13x13 strategy grid for each action
             RANKS_ORDER = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
@@ -819,10 +839,15 @@ class GameState:
                         grid[row][col] = {}
 
             # Cache and return the strategy
+            # Calculate total pot for percentage display
+            total_pot = self.pot + sum(p.current_bet for p in self.players.values())
             self.last_villain_strategy = {
                 'grid': grid,
                 'actions': actions,
-                'node': self.pio_node
+                'node': self.pio_node,
+                'is_check': self.current_bet == 0,  # True if check, False if call
+                'pot': total_pot,
+                'current_bet': self.current_bet  # For bet vs raise distinction
             }
             return self.last_villain_strategy
 
@@ -876,13 +901,24 @@ class GameState:
                     if action_str == 'f':
                         label = 'Fold'
                     elif action_str == 'c':
-                        label = 'X/C'
+                        # Check if there's a bet to call or not
+                        label = 'C' if self.current_bet > 0 else 'X'
                     elif action_str.startswith('b'):
                         # Calculate actual bet amount
                         pio_total = int(action_str[1:])
                         player_invested = self._get_player_cumulative_invested(pio_position)
                         actual_bet = pio_total - player_invested
-                        label = f'B{actual_bet}'
+                        # Determine if bet or raise based on current_bet
+                        if self.current_bet > 0:
+                            # It's a raise - show multiplier
+                            multiplier = actual_bet / self.current_bet if self.current_bet > 0 else 0
+                            mult_display = f'{multiplier:.1f}' if multiplier % 1 != 0 else f'{int(multiplier)}'
+                            label = f'R{actual_bet} ({mult_display}x)'
+                        else:
+                            # It's a bet - show pot percentage
+                            total_pot = self.pot + sum(p.current_bet for p in self.players.values())
+                            pct = round((actual_bet / total_pot) * 100) if total_pot > 0 else 0
+                            label = f'B{actual_bet} ({pct}%)'
                     else:
                         label = action_str
                     result[label] = round(freq * 100, 1)  # Convert to percentage

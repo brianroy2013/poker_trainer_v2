@@ -22,13 +22,21 @@ const interpolateColor = (ratio) => {
 };
 
 // Build bet color map based on available bet sizes
+// actions can be objects {action, amount, total} or strings
 const buildBetColorMap = (actions) => {
-  const betActions = actions.filter(a => a.startsWith('b'));
+  const betActions = actions.filter(a => {
+    const actionStr = typeof a === 'object' ? a.action : a;
+    return actionStr?.startsWith('b');
+  });
   if (betActions.length === 0) return {};
 
-  // Extract and sort bet sizes
+  // Extract and sort bet sizes (use amount for actual size when available)
   const betSizes = betActions
-    .map(a => ({ action: a, size: parseInt(a.substring(1)) || 0 }))
+    .map(a => {
+      const actionStr = typeof a === 'object' ? a.action : a;
+      const size = typeof a === 'object' && a.amount != null ? a.amount : (parseInt(actionStr.substring(1)) || 0);
+      return { action: actionStr, size };
+    })
     .sort((a, b) => a.size - b.size);
 
   const colorMap = {};
@@ -54,10 +62,23 @@ const getActionColor = (action, betColorMap = {}) => {
   return '#a855f7';  // Purple for unknown
 };
 
-const getActionLabel = (action) => {
-  if (action === 'c') return 'X/C';
-  if (action === 'f') return 'Fold';
-  if (action.startsWith('b')) return `B${action.substring(1)}`;
+const getActionLabel = (action, isCheck = true, pot = 0, currentBet = 0, actualAmount = null) => {
+  if (action === 'c') return isCheck ? 'X' : 'C';
+  if (action === 'f') return 'F';
+  if (action.startsWith('b')) {
+    // Use actualAmount if provided, otherwise parse from action string (fallback for grid cells)
+    const amount = actualAmount !== null ? actualAmount : (parseInt(action.substring(1)) || 0);
+    if (currentBet > 0) {
+      // It's a raise - show multiplier
+      const multiplier = amount / currentBet;
+      const multDisplay = multiplier % 1 === 0 ? multiplier.toFixed(0) : multiplier.toFixed(1);
+      return `R${amount} (${multDisplay}x)`;
+    } else {
+      // It's a bet - show pot percentage
+      const pct = pot > 0 ? Math.round((amount / pot) * 100) : 0;
+      return `B${amount} (${pct}%)`;
+    }
+  }
   return action;
 };
 
@@ -72,10 +93,21 @@ function StrategyGrid({ strategyData }) {
     );
   }
 
-  const { grid, actions } = strategyData;
+  const { grid, actions, is_check, pot, current_bet } = strategyData;
+  const isCheck = is_check !== false; // Default to true if not specified
+  const potValue = pot || 0;
+  const currentBet = current_bet || 0;
 
   // Build bet color map based on available actions at this node
   const betColorMap = buildBetColorMap(actions || []);
+
+  // Build mapping from action strings to actual amounts (for tooltips)
+  const actionAmountMap = {};
+  (actions || []).forEach(a => {
+    if (typeof a === 'object' && a.action && a.amount != null) {
+      actionAmountMap[a.action] = a.amount;
+    }
+  });
 
   // Calculate total frequency for each cell (sum of action frequencies = % in range)
   const getCellFrequency = (cellActions) => {
@@ -163,7 +195,10 @@ function StrategyGrid({ strategyData }) {
     const parts = Object.entries(cellActions)
       .filter(([_, freq]) => freq > 0.01)
       .sort((a, b) => b[1] - a[1])
-      .map(([action, freq]) => `${getActionLabel(action)}: ${(freq * 100).toFixed(0)}%`);
+      .map(([action, freq]) => {
+        const actualAmount = actionAmountMap[action] ?? null;
+        return `${getActionLabel(action, isCheck, potValue, currentBet, actualAmount)}: ${(freq * 100).toFixed(0)}%`;
+      });
 
     return `${handLabel}\n${parts.join('\n')}`;
   };
@@ -190,15 +225,19 @@ function StrategyGrid({ strategyData }) {
       {/* Legend */}
       {actions && actions.length > 0 && (
         <div className="strategy-legend">
-          {actions.map((action) => (
-            <div key={action} className="legend-item">
-              <div
-                className="legend-color"
-                style={{ backgroundColor: getActionColor(action, betColorMap) }}
-              />
-              <span>{getActionLabel(action)}</span>
-            </div>
-          ))}
+          {actions.map((actionObj) => {
+            const actionStr = typeof actionObj === 'object' ? actionObj.action : actionObj;
+            const actualAmount = typeof actionObj === 'object' ? actionObj.amount : null;
+            return (
+              <div key={actionStr} className="legend-item">
+                <div
+                  className="legend-color"
+                  style={{ backgroundColor: getActionColor(actionStr, betColorMap) }}
+                />
+                <span>{getActionLabel(actionStr, isCheck, potValue, currentBet, actualAmount)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

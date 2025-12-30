@@ -130,6 +130,8 @@ export function ActionPanel({
             const betColor = betColorMap[action.amount] || interpolateBetColor(0.5);
             // Use 'total' for the action (PioSolver cumulative), display 'amount' (actual bet)
             const actionAmount = action.total || action.amount;
+            // Calculate pot percentage
+            const potPct = pot > 0 ? Math.round((action.amount / pot) * 100) : 0;
             return (
               <button
                 key={index}
@@ -138,7 +140,7 @@ export function ActionPanel({
                 onClick={() => handleAction('raise', actionAmount)}
                 disabled={disabled}
               >
-                Bet {action.amount}
+                Bet {action.amount} ({potPct}%)
               </button>
             );
           }

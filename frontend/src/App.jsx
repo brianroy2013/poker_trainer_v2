@@ -5,25 +5,41 @@ import StrategyGrid from './components/Display/StrategyGrid';
 import GameSetup, { getOpponentStyleIcon } from './components/GameSetup';
 import { useGameState } from './hooks/useGameState';
 
-// Convert card notation to use suit symbols
-const formatCardWithSymbols = (card) => {
-  if (!card || card === '??') return '??';
-  const suitMap = { 's': '♠', 'h': '♥', 'd': '♦', 'c': '♣' };
-  const rank = card.slice(0, -1);
-  const suit = card.slice(-1);
-  return rank + (suitMap[suit] || suit);
+// 4-color deck: spades black, hearts red, diamonds blue, clubs green
+const SUIT_COLORS = {
+  's': '#000000',  // Spades - Black
+  'h': '#e03131',  // Hearts - Red
+  'd': '#1c7ed6',  // Diamonds - Blue
+  'c': '#2f9e44',  // Clubs - Green
 };
 
-const formatHandWithSymbols = (cards) => {
-  if (!cards || cards.length === 0) return '??';
-  return cards.map(formatCardWithSymbols).join('');
+const SUIT_SYMBOLS = { 's': '♠', 'h': '♥', 'd': '♦', 'c': '♣' };
+
+// Format a single card with colored suit symbol
+const formatCardColored = (card) => {
+  if (!card || card === '??') return <span>??</span>;
+  const rank = card.slice(0, -1);
+  const suit = card.slice(-1);
+  const symbol = SUIT_SYMBOLS[suit] || suit;
+  const color = SUIT_COLORS[suit] || '#000';
+  return (
+    <span key={card}>
+      <span style={{ color }}>{rank}{symbol}</span>
+    </span>
+  );
+};
+
+// Format hand with colored cards
+const formatHandColored = (cards) => {
+  if (!cards || cards.length === 0) return <span>??</span>;
+  return cards.map((card, i) => <span key={i}>{formatCardColored(card)}</span>);
 };
 
 // Sort actions: check/call first, bets smallest to largest, fold last
 const sortActions = (entries) => {
   return [...entries].sort(([a], [b]) => {
     const getOrder = (action) => {
-      if (action === 'X/C') return 0;
+      if (action === 'X' || action === 'C' || action === 'Check' || action === 'Call' || action === 'X/C') return 0;
       if (action.startsWith('B')) {
         const amount = parseInt(action.substring(1)) || 0;
         return 1 + amount / 10000; // Small offset for bet ordering
@@ -169,7 +185,7 @@ function App() {
                 <div className="strategy-data">
                   <div className="combo-freq-row">
                     <span className="hand-text">
-                      {formatHandWithSymbols(gameState?.players?.[gameState?.villain_position]?.hole_cards)}
+                      {formatHandColored(gameState?.players?.[gameState?.villain_position]?.hole_cards)}
                     </span>
                     <span className="data-label">In Range:</span>
                     {gameState?.players?.[gameState?.villain_position]?.combo_frequency != null ? (
